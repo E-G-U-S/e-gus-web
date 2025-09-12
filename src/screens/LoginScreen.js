@@ -16,6 +16,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { useApp } from "../context/AppContext";
 import { useAuth } from "../hooks/useAuth";
 import { Button, Input } from "../components/ui";
+import { ROUTES } from "../constants";
+import { 
+  validateEmail as isEmailValid, 
+  isCpfValid,
+  validatePassword as isPasswordValid 
+} from "../utils";
 
 // Helper para % baseado na tela (simula responsive)
 const { width: screenWidth } = Dimensions.get('window');
@@ -23,26 +29,36 @@ const isWeb = Platform.OS === 'web';
 const scale = (size) => (screenWidth / 375) * size; // 375 como base (iPhone X width)
 
 const LoginScreen = ({ navigation }) => {
-  const [activeTab, setActiveTab] = useState("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [emailError, setEmailError] = useState("");
-  const [passwordError, setPasswordError] = useState("");
-  const [nameError, setNameError] = useState("");
-  const [confirmPasswordError, setConfirmPasswordError] = useState("");
+const [identifier, setIdentifier] = useState("");
+const [identifierError, setIdentifierError] = useState("");
+
+// --- Estados para o formulário de CADASTRO ---
+const [name, setName] = useState("");
+const [nameError, setNameError] = useState("");
+const [email, setEmail] = useState(""); 
+const [emailError, setEmailError] = useState(""); 
+const [cpf, setCpf] = useState(""); 
+const [confirmPassword, setConfirmPassword] = useState("");
+const [confirmPasswordError, setConfirmPasswordError] = useState("");
+
+// --- Estados compartilhados ---
+const [password, setPassword] = useState("");
+const [passwordError, setPasswordError] = useState("");
+const [showPassword, setShowPassword] = useState(false);
+const [activeTab, setActiveTab] = useState("login");
 
   const { addNotification } = useApp();
   const { login, register, loginLoading, registerLoading, isLoading } = useAuth();
 
-  const validateEmail = (value) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+
+const validateEmailOnForm = (value) => {
     if (!value) {
       setEmailError("Email é obrigatório");
       return false;
-    } else if (!emailRegex.test(value)) {
+    }
+    // função centralizada!
+    if (!isEmailValid(value)) {
       setEmailError("Email inválido");
       return false;
     }
@@ -50,26 +66,42 @@ const LoginScreen = ({ navigation }) => {
     return true;
   };
 
-  const validatePassword = (value) => {
+
+  const validatePasswordOnForm = (value) => {
+    
     if (!value) {
       setPasswordError("Senha é obrigatória");
       return false;
     }
-    const hasLowerCase = /[a-z]/.test(value);
-    const hasUpperCase = /[A-Z]/.test(value);
-    const hasDigit = /\d/.test(value);
-    //const hasSymbol = /[!@#$%^&*(),.?":{}|<>]/.test(value);
-
-    if (value.length < 8) {
-      setPasswordError("A senha deve ter pelo menos 8 caracteres");
+    if (!isPasswordValid(value)) {
+     
+      setPasswordError("A senha deve ter 8+ caracteres, incluindo maiúscula, minúscula, número e símbolo.");
       return false;
-    } //else if (!hasLowerCase || !hasUpperCase || !hasDigit || !hasSymbol) {
-      //setPasswordError("Inclua minúscula, maiúscula, número e símbolo");
-      ///return false;
-    
+    }
     setPasswordError("");
     return true;
   };
+
+  const validateIdentifierOnForm = (value) => {
+  if (!value) {
+    setIdentifierError("Este campo é obrigatório");
+    return false;
+  }
+  if (value.includes('@')) {
+    if (!isEmailValid(value)) {
+      setIdentifierError("O email informado é inválido");
+      return false;
+    }
+  } else {
+    if (!isCpfValid(value)) {
+      setIdentifierError("O CPF informado é inválido");
+      return false;
+    }
+  }
+  setIdentifierError("");
+  return true;
+};
+
 
   const validateName = (value) => {
     if (!value) {
@@ -93,24 +125,38 @@ const LoginScreen = ({ navigation }) => {
   };
 
   const handleLogin = async () => {
-    setEmailError("");
-    setPasswordError("");
+  const isIdentifierOk = validateIdentifierOnForm(identifier);
+  const isPasswordOk = validatePasswordOnForm(password);
 
-    const isEmailValid = validateEmail(email);
-    const isPasswordValid = validatePassword(password);
-    if (!isEmailValid || !isPasswordValid) return;
+  if (!isIdentifierOk || !isPasswordOk) {
+    return;
+  }
 
-    console.log("Tentando login com:", { email });
-    const result = await login(email, password);
-    
-    if (result.success) {
-      // Login bem-sucedido, navegar para a tela principal
+  let payload;
+  if (identifier.includes('@')) {
+    payload = { email: identifier, senha: password };
+  } else {
+    payload = { cpf: identifier.replace(/\D/g, ''), senha: password };
+  }
+
+  console.log("Tentando login com:", payload);
+  const result = await login(payload);
+
+  if (result.success && result.user) {
+    if (result.user.tipo === "FUNCIONARIO") {
       navigation.navigate("EmployeeDashboard");
+    } else if (result.user.tipo === "USUARIO") {
+      navigation.navigate(ROUTES.HOME);
     } else {
-      // Erro já foi tratado pelo hook useAuth com notificação
-      console.log("Erro no login:", result.error);
+      Alert.alert("Erro de Login", "Tipo de usuário desconhecido.");
     }
-  };
+  } else {
+    console.log("Falha no login:", result.error);
+  }
+};
+
+
+  // Registro
 
   const handleRegister = async () => {
     if (registerLoading || isLoading) {
@@ -124,30 +170,26 @@ const LoginScreen = ({ navigation }) => {
     setConfirmPasswordError("");
 
     const isNameValid = validateName(name);
-    const isEmailValid = validateEmail(email);
-    const isPasswordValid = validatePassword(password);
+    const isPasswordOk = validatePasswordOnForm(password);
     const isConfirmPasswordValid = validateConfirmPassword(confirmPassword);
 
-    if (!isNameValid || !isEmailValid || !isPasswordValid || !isConfirmPasswordValid) {
+    if (!isNameValid || !validateEmailOnForm(email) || !isPasswordOk || !isConfirmPasswordValid) {
       return;
     }
 
-    console.log("Tentando registrar:", { name, email, password: "****" });
+    console.log("Tentando registrar:", { name, email, password: "****", cpf});
     
-    const funcionarioData = {
+    const userData = {
       nome: name,
       email: email,
       senha: password,
-      ativo: true,
-      cargo: 'EMPLOYEE',
-      idMercado: 1
+      cpf: cpf,
     };
     
-    const result = await register(funcionarioData);
+    const result = await register(userData);
     
     if (result.success) {
-      console.log("Funcionário cadastrado com sucesso");
-      // Limpar formulário
+      console.log("Usuario cadastrado com sucesso");
       setName("");
       setEmail("");
       setPassword("");
@@ -165,20 +207,22 @@ const LoginScreen = ({ navigation }) => {
 
   const renderLoginForm = () => (
     <View style={styles.formContainer}>
-      <Input
-        label="Email"
-        leftIcon={<Ionicons name="mail-outline" size={20} color="#666" />}
-        value={email}
-        onChangeText={(text) => {
-          setEmail(text);
-          validateEmail(text);
-        }}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        isInvalid={!!emailError}
-        errorMessage={emailError}
-        style={styles.input}
-      />
+ <Input
+  label="Email ou CPF"
+  leftIcon={<Ionicons name="person-outline" size={20} color="#666" />} // Ícone mais genérico
+  value={identifier} 
+  onChangeText={(text) => {
+    setIdentifier(text);
+   
+  }}
+  keyboardType="default"
+  autoCapitalize="none"
+  isInvalid={!!identifierError} 
+  errorMessage={identifierError}
+  style={styles.input}
+/>
+
+
       <Input
         label="Senha"
         leftIcon={<Ionicons name="lock-closed-outline" size={20} color="#666" />}
@@ -193,7 +237,7 @@ const LoginScreen = ({ navigation }) => {
         value={password}
         onChangeText={(text) => {
           setPassword(text);
-          validatePassword(text);
+          
         }}
         secureTextEntry={!showPassword}
         isInvalid={!!passwordError}
@@ -245,6 +289,17 @@ const LoginScreen = ({ navigation }) => {
         errorMessage={emailError}
         style={styles.input}
       />
+      <Input
+        label= "Cpf"
+        leftIcon={<Ionicons name="card-outline" size={20} color="#666" />}
+        value={cpf}
+        onChangeText={(text) => {
+          setCpf(text);
+
+        }}
+         style={styles.input}
+        />
+  
       <Input
         label="Senha"
         leftIcon={<Ionicons name="lock-closed-outline" size={20} color="#666" />}

@@ -20,53 +20,55 @@ export const useAuth = () => {
   const [registerLoading, setRegisterLoading] = useState(false);
 
   const login = async (email, password) => {
-    try {
-      setLoginLoading(true);
-      setLoading(true);
+  try {
+    setLoginLoading(true);
+    setLoading(true);
+
+    const response = await authService.login(email, password);
+
+    if (response.success) {
       
-      const response = await authService.login(email, password);
-      
-      if (response.success) {
-        // Salvar token e dados do usuário
-        await storage.set(STORAGE_KEYS.AUTH_TOKEN, response.data.token);
-        await storage.set(STORAGE_KEYS.USER_DATA, response.data.user);
-        
-        // Atualizar contexto
-        setUser(response.data.user);
-        setAuthenticated(true);
-        
-        addNotification({
-          type: 'success',
-          title: 'Login realizado com sucesso!',
-          message: `Bem-vindo(a), ${response.data.user.nome}!`
-        });
-        
-        return { success: true, user: response.data.user };
-      } else {
-        addNotification({
-          type: 'error',
-          title: 'Erro no login',
-          message: response.error || 'Credenciais inválidas'
-        });
-        
-        return { success: false, error: response.error };
-      }
-    } catch (error) {
-      console.error('Erro no login:', error);
-      
-      
+      console.log('Resposta do authService.login:', response);
+
+      // Salvar token e dados do usuário
+      await storage.set(STORAGE_KEYS.AUTH_TOKEN, response.data.token);
+      await storage.set(STORAGE_KEYS.USER_DATA, response.data.user);
+
+    
+      setUser(response.data.user);
+      setAuthenticated(true);
+
+      addNotification({
+        type: 'success',
+        title: 'Login realizado com sucesso!',
+        message: `Bem-vindo(a), ${response.data.user.nome}!`,
+      });
+
+      return { success: true, user: response.data.user };
+    } else {
+      console.log('Erro retornado pelo authService:', response.error);
       addNotification({
         type: 'error',
         title: 'Erro no login',
-        message: 'Erro interno do servidor'
+        message: response.error || 'Credenciais inválidas',
       });
-      
-      return { success: false, error: 'Erro interno do servidor' };
-    } finally {
-      setLoginLoading(false);
-      setLoading(false);
+
+      return { success: false, error: response.error };
     }
-  };
+  } catch (error) {
+    console.error('Erro no login:', error);
+    addNotification({
+      type: 'error',
+      title: 'Erro no login',
+      message: 'Erro interno do servidor',
+    });
+
+    return { success: false, error: 'Erro interno do servidor' };
+  } finally {
+    setLoginLoading(false);
+    setLoading(false);
+  }
+};
 
   const register = async (funcionarioData) => {
     try {

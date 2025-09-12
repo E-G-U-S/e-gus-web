@@ -9,6 +9,7 @@ import EmployeeListScreen from '../screens/employee/EmployeeListScreen';
 import EmployeeDashboardScreen from '../screens/employee/EmployeeDashboardScreen';
 import AddEmployeeScreen from '../screens/employee/AddEmployeeScreen';
 import EditEmployeeScreen from '../screens/employee/EditEmployeeScreen';
+import HomeScreen from '../screens/HomeScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -44,6 +45,9 @@ const screenConfigs = {
   [ROUTES.EDIT_EMPLOYEE]: {
     title: 'Editar Funcionário',
   },
+  [ROUTES.HOME]:{
+      title: 'Home',
+  }
 };
 
 const AppNavigator = () => {
@@ -58,6 +62,12 @@ const AppNavigator = () => {
           component={LoginScreen}
           options={screenConfigs[ROUTES.LOGIN]}
         />
+
+       <Stack.Screen
+  name={ROUTES.HOME}
+  component={HomeScreen}
+  options={{ ...screenConfigs[ROUTES.HOME], headerShown: false }}
+/>
         
         <Stack.Screen
           name={ROUTES.EMPLOYEE_LIST}
