@@ -15,7 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useApp } from "../context/AppContext";
 import { useAuth } from "../hooks/useAuth";
-import { Button, Input } from "../components/ui";
+import { Button, Input, } from "../components/ui";
 import { ROUTES } from "../constants";
 import { 
   validateEmail as isEmailValid, 
