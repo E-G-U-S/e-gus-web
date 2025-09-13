@@ -1,5 +1,114 @@
 import { API_ENDPOINTS } from '../constants';
 
+// Classe para extrair mensagens amigáveis dos erros
+class ErrorHandler {
+  static extractUserFriendlyMessage(error, responseText) {
+    console.log('🔍 Extraindo mensagem de erro:', { error, responseText });
+
+    try {
+      // Tentar parsear a resposta como JSON
+      let errorData = null;
+      if (responseText) {
+        try {
+          errorData = JSON.parse(responseText);
+        } catch (parseError) {
+          console.log('Não foi possível parsear resposta como JSON');
+        }
+      }
+
+      // Se temos dados estruturados do backend
+      if (errorData && typeof errorData === 'object') {
+        // Buscar mensagem em diferentes propriedades possíveis
+        const possibleMessageFields = [
+          'message',
+          'error',
+          'userMessage',
+          'details',
+          'error_description',
+          'errorMessage'
+        ];
+
+        for (const field of possibleMessageFields) {
+          if (errorData[field] && typeof errorData[field] === 'string') {
+            const message = errorData[field].trim();
+
+            // Verificar se a mensagem não contém detalhes técnicos
+            if (this.isUserFriendlyMessage(message)) {
+              console.log('✅ Mensagem amigável encontrada:', message);
+              return message;
+            }
+          }
+        }
+
+        // Se não encontrou mensagem amigável, usar status-based fallback
+        if (error && error.status) {
+          return this.getStatusBasedMessage(error.status);
+        }
+      }
+
+      // Fallback baseado no status HTTP se disponível
+      if (error && error.status) {
+        return this.getStatusBasedMessage(error.status);
+      }
+
+      // Fallback para erros de rede
+      if (error && error.name === 'TypeError' && error.message.includes('fetch')) {
+        return 'Verifique sua conexão com a internet';
+      }
+
+      // Fallback final
+      return 'Ocorreu um erro inesperado';
+
+    } catch (extractError) {
+      console.error('Erro ao extrair mensagem amigável:', extractError);
+      return 'Ocorreu um erro inesperado';
+    }
+  }
+
+  static isUserFriendlyMessage(message) {
+    // Verificar se a mensagem não contém informações técnicas
+    const technicalIndicators = [
+      'Exception',
+      'at ',
+      'stack',
+      'trace',
+      'java.',
+      'org.springframework',
+      'Caused by',
+      'com.example',
+      '\tat ',
+      'error_trace'
+    ];
+
+    const lowerMessage = message.toLowerCase();
+    const hasTechnicalInfo = technicalIndicators.some(indicator =>
+        lowerMessage.includes(indicator.toLowerCase())
+    );
+
+    // Também verificar se a mensagem é muito longa (provável stack trace)
+    const isTooLong = message.length > 200;
+
+    return !hasTechnicalInfo && !isTooLong;
+  }
+
+  static getStatusBasedMessage(status) {
+    const statusMessages = {
+      400: 'Dados inválidos fornecidos',
+      401: 'Email ou senha incorretos',
+      403: 'Usuário inativo',
+      404: 'Recurso não encontrado',
+      409: 'Conflito de dados',
+      422: 'Dados inválidos',
+      429: 'Muitas tentativas, aguarde um momento',
+      500: 'Erro interno do servidor',
+      502: 'Serviço temporariamente indisponível',
+      503: 'Serviço temporariamente indisponível',
+    };
+
+    return statusMessages[status] || 'Ocorreu um erro inesperado';
+  }
+}
+
 // Configuração base da API
 class ApiService {
   constructor() {
@@ -31,24 +140,49 @@ class ApiService {
     }
 
     try {
-      console.log('Making request to:', url, 'with config:', config);
+      console.log('🚀 Making request to:', url, 'with config:', config);
       const response = await fetch(url, config);
-      
+
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`HTTP error! status: ${response.status}, response: ${errorText}`);
-        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+        console.error(`❌ HTTP error! status: ${response.status}, response:`, errorText);
+
+        // Criar erro estruturado com informações necessárias
+        const error = new Error('HTTP Error');
+        error.status = response.status;
+        error.statusText = response.statusText;
+        error.responseText = errorText;
+
+        // Extrair mensagem amigável
+        const userMessage = ErrorHandler.extractUserFriendlyMessage(error, errorText);
+
+        console.log('📝 Mensagem final para o usuário:', userMessage);
+
+        return {
+          success: false,
+          error: userMessage,
+          status: response.status
+        };
       }
 
       const data = await response.json();
-      console.log('API Response:', data);
+      console.log('✅ API Response:', data);
       return { success: true, data };
+
     } catch (error) {
-      console.error('API Error:', error);
+      console.error('💥 API Error:', error);
+
+      // Tratar erros de rede
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        return { success: false, error: 'Erro de conexão: Verifique se o servidor está rodando em ' + this.baseURL };
+        return {
+          success: false,
+          error: 'Erro de conexão: Verifique se o servidor está rodando em ' + this.baseURL
+        };
       }
-      return { success: false, error: error.message };
+
+      // Para outros erros, usar a mensagem amigável
+      const userMessage = ErrorHandler.extractUserFriendlyMessage(error);
+      return { success: false, error: userMessage };
     }
   }
 
@@ -87,7 +221,6 @@ class ApiService {
   // Gerenciamento de token
   async getAuthToken() {
     try {
-      // Para React Native, usar AsyncStorage
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       return await AsyncStorage.getItem('authToken');
     } catch (error) {
@@ -98,7 +231,6 @@ class ApiService {
 
   async setAuthToken(token) {
     try {
-      // Para React Native, usar AsyncStorage
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       await AsyncStorage.setItem('authToken', token);
     } catch (error) {
@@ -108,7 +240,6 @@ class ApiService {
 
   async removeAuthToken() {
     try {
-      // Para React Native, usar AsyncStorage
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       await AsyncStorage.removeItem('authToken');
     } catch (error) {
@@ -124,25 +255,30 @@ export const apiService = new ApiService();
 export const authService = {
   async login(email, password) {
     try {
+      console.log('🔐 Tentando login para:', email);
+
       const response = await apiService.post(API_ENDPOINTS.auth.login, {
         email,
         senha: password
       });
-      
+
       if (!response.success) {
-        return { success: false, error: response.error || 'Erro ao fazer login' };
+        console.log('❌ Login falhou:', response.error);
+        return { success: false, error: response.error };
       }
-      
-      // A API retorna diretamente os dados do usuário (id, cargo, nome)
+
+      console.log('✅ Login bem-sucedido:', response.data);
+
+      // A API retorna diretamente os dados do usuário
       const userData = response.data;
-      
-      // Gerar um token simples para demonstração
+
+      // Gerar token para demonstração
       const token = `token_${userData.id}_${Date.now()}`;
-      
+
       if (token) {
         await apiService.setAuthToken(token);
       }
-      
+
       return {
         success: true,
         data: {
@@ -151,23 +287,37 @@ export const authService = {
         }
       };
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('💥 Login error:', error);
       return { success: false, error: 'Erro ao conectar com o servidor' };
     }
   },
 
   async register(funcionarioData) {
-    // Mapear dados para o formato esperado pela API Spring Boot
-    const requestData = {
-      nome: funcionarioData.nome || funcionarioData.name,
-      email: funcionarioData.email,
-      senha: funcionarioData.senha || funcionarioData.password,
-      ativo: funcionarioData.ativo !== undefined ? funcionarioData.ativo : true,
-      cargo: funcionarioData.cargo || 'EMPLOYEE',
-      idMercado: funcionarioData.idMercado || 1
-    };
-    
-    return apiService.post(API_ENDPOINTS.funcionarios.create, requestData);
+    try {
+      console.log('📝 Tentando registrar funcionário:', funcionarioData.email);
+
+      const requestData = {
+        nome: funcionarioData.nome || funcionarioData.name,
+        email: funcionarioData.email,
+        senha: funcionarioData.senha || funcionarioData.password,
+        ativo: funcionarioData.ativo !== undefined ? funcionarioData.ativo : true,
+        cargo: funcionarioData.cargo || 'EMPLOYEE',
+        idMercado: funcionarioData.idMercado || 1
+      };
+
+      const response = await apiService.post(API_ENDPOINTS.funcionarios.create, requestData);
+
+      if (!response.success) {
+        console.log('❌ Registro falhou:', response.error);
+        return { success: false, error: response.error };
+      }
+
+      console.log('✅ Registro bem-sucedido:', response.data);
+      return response;
+    } catch (error) {
+      console.error('💥 Register error:', error);
+      return { success: false, error: 'Erro ao conectar com o servidor' };
+    }
   },
 
   async logout() {
@@ -190,7 +340,6 @@ export const employeeService = {
   },
 
   async create(employeeData) {
-    // Mapear dados para o formato esperado pela API Spring Boot
     const requestData = {
       nome: employeeData.nome || employeeData.name,
       email: employeeData.email,
@@ -203,7 +352,6 @@ export const employeeService = {
   },
 
   async update(id, employeeData) {
-    // Mapear dados para o formato esperado pela API Spring Boot
     const requestData = {
       nome: employeeData.nome || employeeData.name,
       email: employeeData.email,
@@ -211,12 +359,11 @@ export const employeeService = {
       cargo: employeeData.cargo || 'EMPLOYEE',
       idMercado: employeeData.idMercado || 1
     };
-    
-    // Só incluir senha se foi fornecida
+
     if (employeeData.senha || employeeData.password) {
       requestData.senha = employeeData.senha || employeeData.password;
     }
-    
+
     return apiService.put(API_ENDPOINTS.funcionarios.update(id), requestData);
   },
 
@@ -225,5 +372,4 @@ export const employeeService = {
   },
 };
 
-// Alias para compatibilidade
 export const funcionarioService = employeeService;
