@@ -138,8 +138,6 @@ const validateEmailOnForm = (value) => {
   } else {
     payload = { cpf: identifier.replace(/\D/g, ''), senha: password };
   }
-
-  console.log("Tentando login com:", payload);
   const result = await login(payload);
 
   if (result.success && result.user) {
@@ -148,11 +146,10 @@ const validateEmailOnForm = (value) => {
     } else if (result.user.tipo === "USUARIO") {
       navigation.navigate(ROUTES.HOME);
     } else {
-      Alert.alert("Erro de Login", "Tipo de usuário desconhecido.");
+      Alert.alert("Tipo de usuário desconhecido.");
     }
   } else {
-    console.log("Falha no login:", result.error);
-     Alert.alert("Erro de Login", result.error);
+     Alert.alert(result.error);
   }
 };
 
@@ -194,11 +191,11 @@ const validateEmailOnForm = (value) => {
       setName("");
       setEmail("");
       setPassword("");
+      setCpf("");
       setConfirmPassword("");
-      // Voltar para aba de login
       setActiveTab("login");
     } else {
-      console.log("Erro no registro:", result.error);
+      Alert.alert(result.error || "Erro desconhecido");
     }
   };
 
@@ -282,8 +279,9 @@ const validateEmailOnForm = (value) => {
         value={email}
         onChangeText={(text) => {
           setEmail(text);
-          validateEmail(text);
+          validateEmailOnForm(text);
         }}
+        
         keyboardType="email-address"
         autoCapitalize="none"
         isInvalid={!!emailError}
@@ -315,7 +313,7 @@ const validateEmailOnForm = (value) => {
         value={password}
         onChangeText={(text) => {
           setPassword(text);
-          validatePassword(text);
+          validatePasswordOnForm(text);
         }}
         secureTextEntry={!showPassword}
         isInvalid={!!passwordError}
@@ -346,7 +344,6 @@ const validateEmailOnForm = (value) => {
     </View>
   );
 
-  console.log("LoginScreen renderizada, estados:", { email, name, loginLoading, registerLoading });
 
   return (
     <SafeAreaView style={styles.container}>

@@ -59,7 +59,7 @@ const AppNavigator = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName={ROUTES.HOME}
+        initialRouteName={ROUTES.LOGIN}
         screenOptions={defaultScreenOptions}
       >
         <Stack.Screen

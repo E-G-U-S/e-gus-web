@@ -3,7 +3,7 @@ import { API_ENDPOINTS } from '../constants';
 // Classe para extrair mensagens amigáveis dos erros
 class ErrorHandler {
   static extractUserFriendlyMessage(error, responseText) {
-    console.log('🔍 Extraindo mensagem de erro:', { error, responseText });
+    console.log('🔍 Extraindo mensagem de erro:', { error: error.message || error, responseText });
 
     try {
       // Tentar parsear a resposta como JSON
@@ -11,14 +11,22 @@ class ErrorHandler {
       if (responseText) {
         try {
           errorData = JSON.parse(responseText);
+          console.log('✅ Resposta parseada como JSON:', errorData);
         } catch (parseError) {
-          console.log('Não foi possível parsear resposta como JSON');
+          console.log('⚠️ Não foi possível parsear resposta como JSON. Tratando como string simples.');
+          if (typeof responseText === 'string' && responseText.trim()) {
+            const simpleMessage = responseText.trim();
+            if (this.isUserFriendlyMessage(simpleMessage)) {
+              console.log('✅ Mensagem simples amigável encontrada:', simpleMessage);
+              return simpleMessage;
+            } else {
+              console.log('❌ Mensagem simples não é amigável, usando fallback.');
+            }
+          }
         }
       }
 
-      // Se temos dados estruturados do backend
       if (errorData && typeof errorData === 'object') {
-        // Buscar mensagem em diferentes propriedades possíveis
         const possibleMessageFields = [
           'message',
           'error',
@@ -31,32 +39,27 @@ class ErrorHandler {
         for (const field of possibleMessageFields) {
           if (errorData[field] && typeof errorData[field] === 'string') {
             const message = errorData[field].trim();
-
-            // Verificar se a mensagem não contém detalhes técnicos
             if (this.isUserFriendlyMessage(message)) {
-              console.log('✅ Mensagem amigável encontrada:', message);
+              console.log('✅ Mensagem amigável em campo JSON encontrada:', message);
               return message;
             }
           }
         }
 
-        // Se não encontrou mensagem amigável, usar status-based fallback
         if (error && error.status) {
           return this.getStatusBasedMessage(error.status);
         }
       }
 
-      // Fallback baseado no status HTTP se disponível
+
       if (error && error.status) {
         return this.getStatusBasedMessage(error.status);
       }
 
-      // Fallback para erros de rede
       if (error && error.name === 'TypeError' && error.message.includes('fetch')) {
         return 'Verifique sua conexão com a internet';
       }
 
-      // Fallback final
       return 'Ocorreu um erro inesperado';
 
     } catch (extractError) {
@@ -66,7 +69,6 @@ class ErrorHandler {
   }
 
   static isUserFriendlyMessage(message) {
-    // Verificar se a mensagem não contém informações técnicas
     const technicalIndicators = [
       'Exception',
       'at ',
@@ -82,10 +84,9 @@ class ErrorHandler {
 
     const lowerMessage = message.toLowerCase();
     const hasTechnicalInfo = technicalIndicators.some(indicator =>
-        lowerMessage.includes(indicator.toLowerCase())
+      lowerMessage.includes(indicator.toLowerCase())
     );
 
-    // Também verificar se a mensagem é muito longa (provável stack trace)
     const isTooLong = message.length > 200;
 
     return !hasTechnicalInfo && !isTooLong;
@@ -111,36 +112,31 @@ class ErrorHandler {
 
 // Configuração base da API
 class ApiService {
-  constructor() {
-    this.baseURL = API_ENDPOINTS.base;
-    this.defaultHeaders = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    };
-  }
+  constructor() {
+    this.baseURL = API_ENDPOINTS.base;
+    this.defaultHeaders = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+  }
 
-  // Método para fazer requisições HTTP
-  async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
-    const config = {
-      headers: {
-        ...this.defaultHeaders,
-        ...options.headers,
-      },
-      ...options,
-    };
+  async request(endpoint, options = {}) {
+    const url = `${this.baseURL}${endpoint}`;
+    const config = {
+      headers: {
+        ...this.defaultHeaders,
+        ...options.headers,
+      },
+      ...options,
+    };
 
-    // Adicionar token de autenticação se existir
-    const token = await this.getAuthToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    // Adicionar token de autenticação se existir
+    const token = await this.getAuthToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
 
     try {
-      console.log('🚀 Making request to:', url, 'with config:', config);
       const response = await fetch(url, config);
 
       if (!response.ok) {
@@ -153,8 +149,8 @@ class ApiService {
         error.statusText = response.statusText;
         error.responseText = errorText;
 
-        // Extrair mensagem amigável
-        const userMessage = ErrorHandler.extractUserFriendlyMessage(error, errorText);
+        // Extrair mensagem amigável - CORRIGIDO: passa o error e responseText
+        const userMessage = ErrorHandler.extractUserFriendlyMessage(error, error.responseText);
 
         console.log('📝 Mensagem final para o usuário:', userMessage);
 
@@ -166,12 +162,10 @@ class ApiService {
       }
 
       const data = await response.json();
-      console.log('✅ API Response:', data);
       return { success: true, data };
 
     } catch (error) {
-      console.error('💥 API Error:', error);
-
+      console.error('❌ Erro de rede ou fetch:', error);
       // Tratar erros de rede
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
         return {
@@ -186,37 +180,37 @@ class ApiService {
     }
   }
 
-  // Métodos HTTP
-  async get(endpoint, params = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    const url = queryString ? `${endpoint}?${queryString}` : endpoint;
-    return this.request(url, { method: 'GET' });
-  }
+  // Métodos HTTP
+  async get(endpoint, params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `${endpoint}?${queryString}` : endpoint;
+    return this.request(url, { method: 'GET' });
+  }
 
-  async post(endpoint, data = {}) {
-    return this.request(endpoint, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
+  async post(endpoint, data = {}) {
+    return this.request(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
 
-  async put(endpoint, data = {}) {
-    return this.request(endpoint, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-  }
+  async put(endpoint, data = {}) {
+    return this.request(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
 
-  async patch(endpoint, data = {}) {
-    return this.request(endpoint, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
-  }
+  async patch(endpoint, data = {}) {
+    return this.request(endpoint, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
 
-  async delete(endpoint) {
-    return this.request(endpoint, { method: 'DELETE' });
-  }
+  async delete(endpoint) {
+    return this.request(endpoint, { method: 'DELETE' });
+  }
 
   // Gerenciamento de token
   async getAuthToken() {
@@ -224,7 +218,7 @@ class ApiService {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       return await AsyncStorage.getItem('authToken');
     } catch (error) {
-      console.error('Erro ao obter token:', error);
+      console.error('Erro ao buscar token:', error);
       return null;
     }
   }
@@ -248,24 +242,18 @@ class ApiService {
   }
 }
 
-
 export const apiService = new ApiService();
 
 // --- SERVIÇOS ESPECÍFICOS ---
 
 export const authService = {
- 
   async login(payload) { 
     try {
-      
       const response = await apiService.post(API_ENDPOINTS.auth.login, payload);
 
       if (!response.success) {
-        console.log('❌ Login falhou:', response.error);
         return { success: false, error: response.error };
       }
-
-      console.log('✅ Login bem-sucedido:', response.data);
 
       // A API retorna diretamente os dados do usuário
       const userData = response.data;
@@ -284,13 +272,11 @@ export const authService = {
         },
       };
     } catch (error) {
-      console.error('💥 Login error:', error);
       return { success: false, error: error.message || 'Erro ao conectar com o servidor' };
     }
   },
 
   async register(userData) {
-    // A função de registro já estava correta.
     const requestData = {
       nome: userData.nome || userData.name,
       email: userData.email,
@@ -311,13 +297,13 @@ export const authService = {
 };
 
 export const employeeService = {
-  async getAll(idMercado = 1) {
-    return apiService.get(API_ENDPOINTS.funcionarios.list, { idMercado });
-  },
+  async getAll(idMercado = 1) {
+    return apiService.get(API_ENDPOINTS.funcionarios.list, { idMercado });
+  },
 
-  async getById(id) {
-    return apiService.get(API_ENDPOINTS.funcionarios.getById(id));
-  },
+  async getById(id) {
+    return apiService.get(API_ENDPOINTS.funcionarios.getById(id));
+  },
 
   async create(employeeData) {
     const requestData = {
@@ -331,25 +317,25 @@ export const employeeService = {
     return apiService.post(API_ENDPOINTS.funcionarios.create, requestData);
   },
 
-  async update(id, employeeData) {
-    const requestData = {
-      nome: employeeData.nome || employeeData.name,
-      email: employeeData.email,
-      ativo: employeeData.ativo !== undefined ? employeeData.ativo : true,
-      cargo: employeeData.cargo || 'ESTOQUISTA',
-      idMercado: employeeData.idMercado || 1
-    };
-    
-    if (employeeData.senha || employeeData.password) {
-      requestData.senha = employeeData.senha || employeeData.password;
-    }
-    
-    return apiService.put(API_ENDPOINTS.funcionarios.update(id), requestData);
-  },
+  async update(id, employeeData) {
+    const requestData = {
+      nome: employeeData.nome || employeeData.name,
+      email: employeeData.email,
+      ativo: employeeData.ativo !== undefined ? employeeData.ativo : true,
+      cargo: employeeData.cargo || 'ESTOQUISTA',
+      idMercado: employeeData.idMercado || 1
+    };
+    
+    if (employeeData.senha || employeeData.password) {
+      requestData.senha = employeeData.senha || employeeData.password;
+    }
+    
+    return apiService.put(API_ENDPOINTS.funcionarios.update(id), requestData);
+  },
 
-  async delete(id) {
-    return apiService.delete(API_ENDPOINTS.funcionarios.delete(id));
-  },
+  async delete(id) {
+    return apiService.delete(API_ENDPOINTS.funcionarios.delete(id));
+  },
 };
 
 export const funcionarioService = employeeService;
