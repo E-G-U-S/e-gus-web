@@ -8,28 +8,26 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import RNPickerSelect from "react-native-picker-select"; // Import the picker library
 import { useApp } from "../../context/AppContext";
 import { Button, Input } from "../../components/ui";
 import { employeeService } from "../../services/api";
 import { EMPLOYEE_ROLES, getRoleLabel } from "../../constants";
+import MessagePopup from "../../components/ui/MessagePopup";
 
-// Helper para % baseado na tela (simula responsive)
-const { width: screenWidth } = Dimensions.get('window');
-const isWeb = Platform.OS === 'web';
-const scale = (size) => (screenWidth / 375) * size; // 375 como base (iPhone X width)
-
-
-
+// Helper for responsive scaling
+const { width: screenWidth } = Dimensions.get("window");
+const isWeb = Platform.OS === "web";
+const scale = (size) => (screenWidth / 375) * size;
 
 const AddEmployeeScreen = ({ navigation }) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("Estoquista");
+  const [role, setRole] = useState(""); // Initialize as empty for placeholder
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [nameError, setNameError] = useState("");
@@ -39,11 +37,10 @@ const AddEmployeeScreen = ({ navigation }) => {
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const [activeTab, setActiveTab] = useState("register"); // pra renderRegisterForm
-const [isRegistering, setIsRegistering] = useState(false);
-const [isLoading, setIsLoading] = useState(false);
-
+  const [messagePopup, setMessagePopup] = useState({ visible: false, message: "" });
+  const [activeTab, setActiveTab] = useState("register");
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const { user } = useApp();
 
@@ -60,9 +57,7 @@ const [isLoading, setIsLoading] = useState(false);
     return true;
   };
 
-
-
-   const validateRole = (value) => {
+  const validateRole = (value) => {
     if (!value) {
       setRoleError("Cargo é obrigatório");
       return false;
@@ -113,73 +108,79 @@ const [isLoading, setIsLoading] = useState(false);
     return true;
   };
 
-
-
   const handleRegister = async () => {
-  if (isRegistering || isLoading) {
-    console.log("Registro já em andamento ou carregando, ignorando...");
-    return;
-  }
-
-  setIsRegistering(true);
-  setIsLoading(true); // Ativar estado de carregamento
-
-  // Resetar erros
-  setNameError("");
-  setEmailError("");
-  setRoleError("");
-  setPasswordError("");
-  setConfirmPasswordError("");
-
-  // Validar todos os campos
-  const isNameValid = validateName(name);
-  const isEmailValid = validateEmail(email);
-  const isRoleValid = validateRole(role);
-  const isPasswordValid = validatePassword(password);
-  const isConfirmPasswordValid = validateConfirmPassword(confirmPassword);
-
-  if (
-    !isNameValid ||
-    !isEmailValid ||
-    !isRoleValid ||
-    !isPasswordValid ||
-    !isConfirmPasswordValid
-  ) {
-    setIsRegistering(false);
-    setIsLoading(false);
-    return;
-  }
-
-  try {
-    // Preparar dados conforme FuncionarioRequest do backend
-    const funcionarioData = {
-      nome: name,
-      email: email,
-      senha: password,
-      ativo: true,
-      cargo: role,
-      idMercado: user?.idMercado || 1
-    };
-    
-    console.log('Cadastrando funcionário:', funcionarioData);
-    
-    const response = await employeeService.create(funcionarioData);
-    
-    if (response.success) {
-      Alert.alert("Sucesso", "Funcionário cadastrado com sucesso!", [
-        { text: "OK", onPress: () => navigation.goBack() }
-      ]);
-    } else {
-      Alert.alert("Erro", response.error || "Falha ao cadastrar funcionário.");
+    if (isRegistering || isLoading) {
+      console.log("Registro já em andamento ou carregando, ignorando...");
+      return;
     }
-  } catch (err) {
-    console.error("Erro inesperado em handleRegister:", err);
-    Alert.alert("Erro", "Erro ao conectar com o servidor. Tente novamente.");
-  } finally {
-    setIsRegistering(false);
-    setIsLoading(false);
-  }
-};
+
+    setIsRegistering(true);
+    setIsLoading(true);
+
+    setNameError("");
+    setEmailError("");
+    setRoleError("");
+    setPasswordError("");
+    setConfirmPasswordError("");
+
+    const isNameValid = validateName(name);
+    const isEmailValid = validateEmail(email);
+    const isRoleValid = validateRole(role);
+    const isPasswordValid = validatePassword(password);
+    const isConfirmPasswordValid = validateConfirmPassword(confirmPassword);
+
+    if (
+      !isNameValid ||
+      !isEmailValid ||
+      !isRoleValid ||
+      !isPasswordValid ||
+      !isConfirmPasswordValid
+    ) {
+      setIsRegistering(false);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const funcionarioData = {
+        nome: name,
+        email: email,
+        senha: password,
+        ativo: true,
+        cargo: role,
+        idMercado: user?.idMercado || 1,
+      };
+
+      console.log("Cadastrando funcionário:", funcionarioData);
+
+      const response = await employeeService.create(funcionarioData);
+
+      if (response.success) {
+        setMessagePopup({
+          visible: true,
+          message: "Funcionário cadastrado com sucesso!",
+          onClose: () => {
+            setMessagePopup({ visible: false, message: "", onClose: null });
+            navigation.goBack();
+          },
+        });
+      } else {
+        setMessagePopup({
+          visible: true,
+          message: response.error || "Falha ao cadastrar funcionário.",
+        });
+      }
+    } catch (err) {
+      console.error("Erro inesperado em handleRegister:", err);
+      setMessagePopup({
+        visible: true,
+        message: "Erro ao conectar com o servidor. Tente novamente.",
+      });
+    } finally {
+      setIsRegistering(false);
+      setIsLoading(false);
+    }
+  };
 
   const renderRegisterForm = () => (
     <View style={styles.formContainer}>
@@ -209,47 +210,61 @@ const [isLoading, setIsLoading] = useState(false);
         errorMessage={emailError}
         style={styles.input}
       />
-      <View style={styles.pickerContainer}>
-        <Text style={styles.pickerLabel}>Cargo</Text>
-        <View style={styles.pickerWrapper}>
-          <Ionicons name="briefcase-outline" size={20} color="#666" style={styles.pickerIcon} />
-          <TouchableOpacity 
-            style={[styles.pickerButton, roleError ? styles.pickerError : null]}
-            onPress={() => {
-              Alert.alert(
-                "Selecionar Cargo",
-                "Escolha o cargo do funcionário:",
-                [
-                  {
-                    text: "Administrador",
-                    onPress: () => {
-                      setRole("Administrador");
-                      validateRole("Administrador");
-                    }
-                  },
-                  {
-                    text: "Estoquista",
-                    onPress: () => {
-                      setRole("Estoquista");
-                      validateRole("Estoquista");
-                    }
-                  },
-                  {
-                    text: "Cancelar",
-                    style: "cancel"
-                  }
-                ]
-              );
-            }}
-          >
-            <Text style={[styles.pickerText, !role && styles.pickerPlaceholder]}>
-              {role || "Selecione um cargo"}
-            </Text>
-            <Ionicons name="chevron-down" size={20} color="#666" />
-          </TouchableOpacity>
-        </View>
-        {roleError ? <Text style={styles.errorText}>{roleError}</Text> : null}
-      </View>
+     <View style={styles.pickerContainer}>
+  <View
+    style={[
+      styles.pickerWrapper,
+      roleError ? styles.pickerError : null,
+    ]}
+  >
+    {/* O ícone da esquerda continua aqui, mas seu estilo vai mudar no StyleSheet */}
+ 
+   <Ionicons
+ name="briefcase-outline"
+ size={20}
+color="#666"
+ style={styles.pickerIcon}
+ />
+    
+    <RNPickerSelect
+      onValueChange={(value) => {
+        setRole(value);
+        validateRole(value);
+      }}
+      items={Object.values(EMPLOYEE_ROLES).map((r) => ({
+        label: getRoleLabel(r),
+        value: r,
+      }))}
+      
+      // AQUI ESTÁ A MUDANÇA PRINCIPAL
+      style={{
+        // O input agora terá padding para os dois ícones
+        inputIOS: styles.pickerInput,
+        inputAndroid: styles.pickerInput,
+        inputWeb: styles.pickerInput,
+        
+        // O placeholder usará o mesmo estilo do input para alinhar corretamente
+        placeholder: {
+          ...styles.pickerPlaceholder,
+          ...styles.pickerInput, 
+        },
+
+        // O container do ícone da direita (seta) replicará o estilo do Input
+        iconContainer: {
+          position: 'absolute',
+          top: '50%',
+          right: 15,
+          transform: [{ translateY: -10 }], // Centraliza o ícone de 20px de altura
+        },
+      }}
+
+      value={role}
+      placeholder={{ label: "Selecione um cargo", value: "" }}
+     
+    />
+  </View>
+  {roleError ? <Text style={styles.errorText}>{roleError}</Text> : null}
+</View>
       <Input
         label="Senha"
         leftIcon={<Ionicons name="lock-closed-outline" size={20} color="#666" />}
@@ -303,7 +318,6 @@ const [isLoading, setIsLoading] = useState(false);
     </View>
   );
 
-
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -325,12 +339,17 @@ const [isLoading, setIsLoading] = useState(false);
           <View style={styles.card}>
             <View style={styles.headerContainer}>
               <Text style={styles.headerText}>Novo Funcionário</Text>
-              <Text style={styles.headerSubtext}>Preencha os dados para cadastrar um novo funcionário</Text>
+              <Text style={styles.headerSubtext}>
+                Preencha os dados para cadastrar um novo funcionário
+              </Text>
             </View>
             {activeTab === "register" && renderRegisterForm()}
-
-            
           </View>
+          <MessagePopup
+            visible={messagePopup.visible}
+            message={messagePopup.message}
+            onClose={messagePopup.onClose}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -338,12 +357,17 @@ const [isLoading, setIsLoading] = useState(false);
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" ,
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
     ...Platform.select({
-      web: { alignItems: 'center', justifyContent: 'center' }, // Centraliza no web
+      web: { alignItems: "center", justifyContent: "center" },
     }),
   },
-  keyboardAvoidingView: { flex: 1, width: isWeb ? Math.min(screenWidth * 0.8, 600) : '100%', },
+  keyboardAvoidingView: {
+    flex: 1,
+    width: isWeb ? Math.min(screenWidth * 0.8, 600) : "100%",
+  },
   scrollView: { flexGrow: 1, paddingHorizontal: 20, paddingBottom: 10 },
   logoContainer: { alignItems: "center", marginTop: 10, marginBottom: 5 },
   logo: {
@@ -371,13 +395,6 @@ const styles = StyleSheet.create({
     marginTop: 5,
     marginHorizontal: 5,
   },
-  tabsContainer: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-    marginBottom: 10,
-  },
   headerContainer: {
     alignItems: "center",
     marginBottom: 15,
@@ -396,14 +413,8 @@ const styles = StyleSheet.create({
     color: "#666",
     textAlign: "center",
   },
-  tab: { flex: 1, paddingVertical: 10, alignItems: "center" },
-  activeTab: { borderBottomWidth: 2, borderBottomColor: "#2d5d3d" },
-  tabText: { fontSize: 16, fontWeight: "500", color: "#666" },
-  activeTabText: { color: "#2d5d3d", fontWeight: "bold" },
   formContainer: { marginBottom: 10, minHeight: 200 },
   input: { height: 42, borderRadius: 8, marginBottom: 8 },
-  forgotPassword: { alignSelf: "flex-end", marginBottom: 10 },
-  forgotPasswordText: { color: "#2d5d3d", fontSize: 14 },
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -413,20 +424,7 @@ const styles = StyleSheet.create({
   button: { flex: 1, height: 50, borderRadius: 10 },
   cancelButton: { backgroundColor: "#dc2626" },
   registerButton: { backgroundColor: "#2d5d3d" },
-  errorContainer: {
-    backgroundColor: "#fee2e2",
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  errorText: { color: "#b91c1c", fontSize: 14 },
-  dividerContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 15,
-  },
-  divider: { flex: 1, height: 1, backgroundColor: "#e0e0e0" },
-  dividerText: { marginHorizontal: 8, color: "#666", fontSize: 14 },
+  errorText: { color: "#b91c1c", fontSize: 14, marginTop: 4 },
   pickerContainer: {
     marginBottom: 16,
   },
@@ -436,28 +434,46 @@ const styles = StyleSheet.create({
     color: "#333",
     marginBottom: 8,
   },
+    pickerIcon: {
+    position: 'absolute',    // Posição absoluta
+    left: 15,                // 15px da esquerda
+    top: '50%',              // Alinhamento vertical
+    transform: [{ translateY: -10 }], // Ajuste fino vertical
+    zIndex: 2,               // Garante que fique por cima
+  },
   pickerWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f8f9fa",
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f9f9f9', // Cor de fundo igual ao do Input
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#e9ecef",
-    paddingHorizontal: 12,
+    borderColor: '#e0e0e0', // Borda padrão igual ao do Input
+    position: 'relative',    // Necessário para o posicionamento absoluto dos filhos
+    minHeight: 45,           // Altura mínima igual ao do Input
   },
-  pickerIcon: {
-    marginRight: 12,
-  },
-  pickerButton: {
+  iconContainer: {
+      position: 'absolute',
+      right: 15,
+      top: 0,
+      bottom: 0,
+      justifyContent: 'center',
+    },
+    pickerInput: {
     flex: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 16,
-  },
-  pickerText: {
     fontSize: 16,
-    color: "#333",
+    color: '#333',
+    backgroundColor: "transparent",
+    paddingTop: 10,          // Padding vertical igual ao do Input
+    paddingBottom: 10,       // Padding vertical igual ao do Input
+    paddingLeft: 45,         // CRUCIAL: Espaço para o ícone da esquerda
+    paddingRight: 45,
+    ...Platform.select({
+      web: {
+        borderWidth: 0, // Remove a borda padrão do <select>
+        outline: 'none',  // Remove a linha azul de foco do navegador
+      }
+    }),
+ 
   },
   pickerPlaceholder: {
     color: "#999",

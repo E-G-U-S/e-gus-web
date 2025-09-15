@@ -11,6 +11,7 @@ import AddEmployeeScreen from '../screens/employee/AddEmployeeScreen';
 import EditEmployeeScreen from '../screens/employee/EditEmployeeScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ProductSearchScreen from '../screens/ProductSearchScreen';
+import ProductComparisonScreen from '../screens/ProductComparisonScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -41,6 +42,9 @@ const screenConfigs = {
   [ROUTES.PRODUCT_SEARCH]: {
     title: 'Buscar Produto',
   },
+  [ROUTES.PRODUCT_COMPARISON]: {
+    title: 'Comparação de Produtos',
+  },
   [ROUTES.EMPLOYEE_DASHBOARD]: {
     title: 'Dashboard',
   },
@@ -53,13 +57,14 @@ const screenConfigs = {
   [ROUTES.HOME]:{
       title: 'Home',
   }
+
 };
 
 const AppNavigator = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName={ROUTES.LOGIN}
+        initialRouteName={ROUTES.HOME}
         screenOptions={defaultScreenOptions}
       >
         <Stack.Screen
@@ -78,6 +83,11 @@ const AppNavigator = () => {
         name="Search"
         component={ProductSearchScreen}
         options={{ ...screenConfigs[ROUTES.PRODUCT_SEARCH], headerShown: false }}
+        />
+        <Stack.Screen
+        name="ProductComparison"
+        component={ProductComparisonScreen}
+        options={{ ...screenConfigs[ROUTES.PRODUCT_COMPARISON], headerShown: false }}
         />
 
         <Stack.Screen

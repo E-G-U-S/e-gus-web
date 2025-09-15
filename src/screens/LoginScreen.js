@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useApp } from "../context/AppContext";
 import { useAuth } from "../hooks/useAuth";
 import { Button, Input, } from "../components/ui";
+import MessagePopup from "../components/ui/MessagePopup";
 import { ROUTES } from "../constants";
 import { 
   validateEmail as isEmailValid, 
@@ -40,6 +41,8 @@ const [emailError, setEmailError] = useState("");
 const [cpf, setCpf] = useState(""); 
 const [confirmPassword, setConfirmPassword] = useState("");
 const [confirmPasswordError, setConfirmPasswordError] = useState("");
+const [messagePopup, setMessagePopup] = useState({ visible: false, message: "" });
+
 
 // --- Estados compartilhados ---
 const [password, setPassword] = useState("");
@@ -65,6 +68,8 @@ const validateEmailOnForm = (value) => {
     setEmailError("");
     return true;
   };
+
+  
 
 
   const validatePasswordOnForm = (value) => {
@@ -149,7 +154,7 @@ const validateEmailOnForm = (value) => {
       Alert.alert("Tipo de usuário desconhecido.");
     }
   } else {
-     Alert.alert(result.error);
+    setMessagePopup({ visible: true, message: result.error });
   }
 };
 
@@ -195,7 +200,7 @@ const validateEmailOnForm = (value) => {
       setConfirmPassword("");
       setActiveTab("login");
     } else {
-      Alert.alert(result.error || "Erro desconhecido");
+     setMessagePopup({ visible: true, message: result.error });
     }
   };
 
@@ -281,7 +286,7 @@ const validateEmailOnForm = (value) => {
           setEmail(text);
           validateEmailOnForm(text);
         }}
-        
+
         keyboardType="email-address"
         autoCapitalize="none"
         isInvalid={!!emailError}
@@ -415,6 +420,11 @@ const validateEmailOnForm = (value) => {
               </TouchableOpacity>
             </View>
           </View>
+          <MessagePopup
+          visible={messagePopup.visible}
+          message={messagePopup.message}
+          onClose={() => setMessagePopup({ visible: false, message: "" })}
+        />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

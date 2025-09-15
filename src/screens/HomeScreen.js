@@ -157,7 +157,7 @@ const HomeScreen = () => {
       <Animated.View style={[styles.header, headerAnimatedStyle]}>
         <Animated.View style={[styles.headerTop, logoAnimatedStyle]}>
           <View style={styles.logoContainer}>
-            <Image source={require('../../assets/logo.png')} style={styles.logoImage} resizeMode="contain" />
+            <Image source={require('../../assets/logoHome.png')} style={styles.logoImage} resizeMode="contain" />
           </View>
           <TouchableOpacity style={styles.notificationButton}>
             <Ionicons name="notifications-outline" size={24} color="#333" />
