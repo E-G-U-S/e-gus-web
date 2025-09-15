@@ -1,7 +1,9 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ROUTES, COLORS } from '../constants';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { COLORS, ROUTES } from '../constants';
+import CustomBottomTabBar from '../components/ui/CustomBottomTabBar';
 
 // Importar telas
 import LoginScreen from '../screens/LoginScreen';
@@ -14,8 +16,9 @@ import ProductSearchScreen from '../screens/ProductSearchScreen';
 import ProductComparisonScreen from '../screens/ProductComparisonScreen';
 
 const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
 
-// Configurações padrão para as telas
+// Configurações padrão para as telas do StackNavigator
 const defaultScreenOptions = {
   headerStyle: {
     backgroundColor: COLORS.primary,
@@ -38,7 +41,6 @@ const screenConfigs = {
     title: 'Lista de Funcionários',
     headerLeft: null, // Remove botão de voltar
   },
-
   [ROUTES.PRODUCT_SEARCH]: {
     title: 'Buscar Produto',
   },
@@ -54,12 +56,27 @@ const screenConfigs = {
   [ROUTES.EDIT_EMPLOYEE]: {
     title: 'Editar Funcionário',
   },
-  [ROUTES.HOME]:{
-      title: 'Home',
-  }
-
+  [ROUTES.HOME]: {
+    title: 'Home',
+  },
 };
 
+// Navegador de abas
+const TabNavigator = () => {
+  return (
+    <Tab.Navigator
+      tabBar={(props) => <CustomBottomTabBar {...props} />}
+      screenOptions={{
+        headerShown: false, // Esconde o header nas telas da aba
+      }}
+    >
+      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Search" component={ProductSearchScreen} />
+    </Tab.Navigator>
+  );
+};
+
+// Navegador principal
 const AppNavigator = () => {
   return (
     <NavigationContainer>
@@ -72,59 +89,35 @@ const AppNavigator = () => {
           component={LoginScreen}
           options={screenConfigs[ROUTES.LOGIN]}
         />
-
-       <Stack.Screen
-        name={ROUTES.HOME}
-        component={HomeScreen}
-        options={{ ...screenConfigs[ROUTES.HOME], headerShown: false }}
-        />
-
-       <Stack.Screen
-        name="Search"
-        component={ProductSearchScreen}
-        options={{ ...screenConfigs[ROUTES.PRODUCT_SEARCH], headerShown: false }}
+        <Stack.Screen
+          name={ROUTES.HOME}
+          component={TabNavigator}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
-        name="ProductComparison"
-        component={ProductComparisonScreen}
-        options={{ ...screenConfigs[ROUTES.PRODUCT_COMPARISON], headerShown: false }}
+          name={ROUTES.PRODUCT_COMPARISON}
+          component={ProductComparisonScreen}
+          options={screenConfigs[ROUTES.PRODUCT_COMPARISON]}
         />
-
         <Stack.Screen
           name={ROUTES.EMPLOYEE_LIST}
           component={EmployeeListScreen}
-          
-          options={{
-            ...screenConfigs[ROUTES.EMPLOYEE_LIST],
-            headerShown: false
-          }}
+          options={screenConfigs[ROUTES.EMPLOYEE_LIST]}
         />
-        
         <Stack.Screen
           name={ROUTES.EMPLOYEE_DASHBOARD}
           component={EmployeeDashboardScreen}
-          options={{
-            ...screenConfigs[ROUTES.EMPLOYEE_DASHBOARD],
-            headerShown: false
-          }}
+          options={screenConfigs[ROUTES.EMPLOYEE_DASHBOARD]}
         />
-        
         <Stack.Screen
           name={ROUTES.ADD_EMPLOYEE}
           component={AddEmployeeScreen}
-          options={{
-            ...screenConfigs[ROUTES.ADD_EMPLOYEE],
-            headerShown: false
-          }}
+          options={screenConfigs[ROUTES.ADD_EMPLOYEE]}
         />
-        
         <Stack.Screen
           name={ROUTES.EDIT_EMPLOYEE}
           component={EditEmployeeScreen}
-          options={{
-            ...screenConfigs[ROUTES.EDIT_EMPLOYEE],
-            headerShown: false
-          }}
+          options={screenConfigs[ROUTES.EDIT_EMPLOYEE]}
         />
       </Stack.Navigator>
     </NavigationContainer>

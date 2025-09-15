@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import SearchBar from '../components/ui/SearchBar';
 import ProductCard from '../components/ui/ProductCard';
 import Animated, { useSharedValue, useAnimatedStyle, interpolate, Extrapolate, interpolateColor } from 'react-native-reanimated';
@@ -34,6 +35,9 @@ const HomeScreen = () => {
   const [locationError, setLocationError] = useState(null);
   const [userCoords, setUserCoords] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Obter a altura da barra de abas
+  const tabBarHeight = useContext(BottomTabBarHeightContext) || 50;
 
   // Animação
   const scrollY = useSharedValue(0);
@@ -64,15 +68,21 @@ const HomeScreen = () => {
   });
 
   const loadData = () => {
-    setLoading(true);
-    setFeaturedProducts(mockFeaturedProducts);
-    setBeverageHighlights(mockBeverageHighlights);
-    setNearbyStores(mockNearbyStores);
-    setCategories(mockCategories);
-    setCurrentLocationText(mockLocation.address);
-    setUserCoords(mockLocation.coords);
-    setLocationError(null);
-    setLoading(false);
+    try {
+      setLoading(true);
+      setFeaturedProducts(mockFeaturedProducts || []);
+      setBeverageHighlights(mockBeverageHighlights || []);
+      setNearbyStores(mockNearbyStores || []);
+      setCategories(mockCategories || []);
+      setCurrentLocationText(mockLocation?.address || 'Localização não disponível');
+      setUserCoords(mockLocation?.coords || null);
+      setLocationError(null);
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      setLocationError('Erro ao carregar localização');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -96,7 +106,8 @@ const HomeScreen = () => {
   };
 
   const handleStorePress = (store) => {
-    navigation.navigate('Map', { selectedStore: store, userLocation: userCoords });
+    // Substitui navegação para Map por log temporário
+    console.log('Navegação para loja:', store);
   };
 
   const handleCategoryPress = (category) => {
@@ -189,6 +200,7 @@ const HomeScreen = () => {
 
       <ScrollView
         style={styles.content}
+        contentContainerStyle={{ paddingBottom: tabBarHeight + 20 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2d5d3d']} />
@@ -253,8 +265,8 @@ const HomeScreen = () => {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Mercados Próximos</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Map', { userLocation: userCoords })}>
-                <Text style={styles.seeAllText}>Ver mapa</Text>
+              <TouchableOpacity onPress={handleSeeAllPress}>
+                <Text style={styles.seeAllText}>Ver mais</Text>
               </TouchableOpacity>
             </View>
             <FlatList

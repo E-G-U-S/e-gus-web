@@ -164,13 +164,13 @@ export const STORAGE_KEYS = {
 // Rotas da aplicação
 export const ROUTES = {
   LOGIN: 'Login',
-  HOME: 'HomeScreen',
+  HOME: 'Home',
   EMPLOYEE_LIST: 'EmployeeList',
   EMPLOYEE_DASHBOARD: 'EmployeeDashboard',
   ADD_EMPLOYEE: 'AddEmployee',
   EDIT_EMPLOYEE: 'EditEmployee',
-  PRODUCT_SEARCH: 'ProductSearch',
-  
+  PRODUCT_SEARCH: 'Search',
+  PRODUCT_COMPARISON: 'ProductComparison',
 };
 
 // Configurações de animação
