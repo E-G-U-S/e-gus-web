@@ -169,6 +169,8 @@ export const ROUTES = {
   EMPLOYEE_DASHBOARD: 'EmployeeDashboard',
   ADD_EMPLOYEE: 'AddEmployee',
   EDIT_EMPLOYEE: 'EditEmployee',
+  PRODUCT_SEARCH: 'ProductSearch',
+  
 };
 
 // Configurações de animação

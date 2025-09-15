@@ -152,6 +152,7 @@ const validateEmailOnForm = (value) => {
     }
   } else {
     console.log("Falha no login:", result.error);
+     Alert.alert("Erro de Login", result.error);
   }
 };
 

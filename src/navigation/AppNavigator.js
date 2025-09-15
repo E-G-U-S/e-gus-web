@@ -10,6 +10,7 @@ import EmployeeDashboardScreen from '../screens/employee/EmployeeDashboardScreen
 import AddEmployeeScreen from '../screens/employee/AddEmployeeScreen';
 import EditEmployeeScreen from '../screens/employee/EditEmployeeScreen';
 import HomeScreen from '../screens/HomeScreen';
+import ProductSearchScreen from '../screens/ProductSearchScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -36,6 +37,10 @@ const screenConfigs = {
     title: 'Lista de Funcionários',
     headerLeft: null, // Remove botão de voltar
   },
+
+  [ROUTES.PRODUCT_SEARCH]: {
+    title: 'Buscar Produto',
+  },
   [ROUTES.EMPLOYEE_DASHBOARD]: {
     title: 'Dashboard',
   },
@@ -54,7 +59,7 @@ const AppNavigator = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName={ROUTES.LOGIN}
+        initialRouteName={ROUTES.HOME}
         screenOptions={defaultScreenOptions}
       >
         <Stack.Screen
@@ -64,11 +69,17 @@ const AppNavigator = () => {
         />
 
        <Stack.Screen
-  name={ROUTES.HOME}
-  component={HomeScreen}
-  options={{ ...screenConfigs[ROUTES.HOME], headerShown: false }}
-/>
-        
+        name={ROUTES.HOME}
+        component={HomeScreen}
+        options={{ ...screenConfigs[ROUTES.HOME], headerShown: false }}
+        />
+
+       <Stack.Screen
+        name="Search"
+        component={ProductSearchScreen}
+        options={{ ...screenConfigs[ROUTES.PRODUCT_SEARCH], headerShown: false }}
+        />
+
         <Stack.Screen
           name={ROUTES.EMPLOYEE_LIST}
           component={EmployeeListScreen}
