@@ -23,9 +23,6 @@ export const useAuth = () => {
     try {
       setLoginLoading(true);
       setLoading(true);
-
-      console.log('🔐 useAuth: Iniciando login para:', email);
-
       const response = await authService.login(email, password);
 
       if (response.success) {
@@ -49,7 +46,7 @@ export const useAuth = () => {
       } else {
         console.log('❌ useAuth: Login falhou com erro:', response.error);
 
-        // Usar a mensagem de erro amigável que já foi tratada pela API
+        // Usar a mensagem de erro  que já foi tratada pela API
         addNotification({
           type: 'error',
           title: 'Erro no login',
@@ -99,7 +96,7 @@ export const useAuth = () => {
       } else {
         console.log('❌ useAuth: Registro falhou com erro:', response.error);
 
-        // Usar a mensagem de erro amigável que já foi tratada pela API
+        // Usar a mensagem de erro que já foi tratada pela API
         addNotification({
           type: 'error',
           title: 'Erro no cadastro',
@@ -179,6 +176,51 @@ export const useAuth = () => {
     }
   };
 
+  // Atualiza preferências do usuário
+  const updateUserPreferences = async (preferences) => {
+    try {
+      setLoading(true);
+      if (!user || !user.id) {
+        throw new Error('Usuário não encontrado');
+      }
+      const updatedUser = {
+        id: user.id,
+        nome: user.nome,
+        email: user.email,
+        cpf: user.cpf,
+        preferences: preferences,
+      };
+      // Chama API para atualizar usuário
+      const response = await authService.updateUser(user.id, updatedUser);
+      if (response.success) {
+        setUser(response.data);
+        await storage.set(STORAGE_KEYS.USER_DATA, response.data);
+        addNotification({
+          type: 'success',
+          title: 'Preferências salvas',
+          message: 'Suas preferências foram atualizadas com sucesso.'
+        });
+        return { success: true, data: response.data };
+      } else {
+        addNotification({
+          type: 'error',
+          title: 'Erro ao salvar',
+          message: response.error || 'Erro ao atualizar preferências.'
+        });
+        return { success: false, error: response.error };
+      }
+    } catch (error) {
+      addNotification({
+        type: 'error',
+        title: 'Erro ao salvar',
+        message: error.message || 'Erro inesperado ao atualizar preferências.'
+      });
+      return { success: false, error: error.message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     // Estado
     user,
@@ -186,13 +228,11 @@ export const useAuth = () => {
     isLoading,
     loginLoading,
     registerLoading,
-
     // Métodos
     login,
     register,
     logout,
     checkAuthStatus,
+    updateUserPreferences,
   };
 };
-
-export default useAuth;

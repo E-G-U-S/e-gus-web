@@ -294,6 +294,11 @@ export const authService = {
   async refreshToken() {
     return apiService.post(API_ENDPOINTS.auth.refresh);
   },
+
+  async updateUser(id, userData) {
+    // userData deve conter todos os campos do usuário, inclusive preferences
+    return apiService.put(API_ENDPOINTS.usuarios.update(id), userData);
+  },
 };
 
 export const employeeService = {

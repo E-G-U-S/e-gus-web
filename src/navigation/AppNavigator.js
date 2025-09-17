@@ -5,6 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { COLORS, ROUTES } from '../constants';
 import CustomBottomTabBar from '../components/ui/CustomBottomTabBar';
 
+
 // Importar telas
 import LoginScreen from '../screens/LoginScreen';
 import EmployeeListScreen from '../screens/employee/EmployeeListScreen';
@@ -14,6 +15,7 @@ import EditEmployeeScreen from '../screens/employee/EditEmployeeScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ProductSearchScreen from '../screens/ProductSearchScreen';
 import ProductComparisonScreen from '../screens/ProductComparisonScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -47,6 +49,7 @@ const screenConfigs = {
   [ROUTES.PRODUCT_COMPARISON]: {
     title: 'Comparação de Produtos',
   },
+
   [ROUTES.EMPLOYEE_DASHBOARD]: {
     title: 'Dashboard',
   },
@@ -59,6 +62,9 @@ const screenConfigs = {
   [ROUTES.HOME]: {
     title: 'Home',
   },
+  [ROUTES.PROFILE]: {
+    title: 'Perfil',
+  },
 };
 
 // Navegador de abas
@@ -67,11 +73,12 @@ const TabNavigator = () => {
     <Tab.Navigator
       tabBar={(props) => <CustomBottomTabBar {...props} />}
       screenOptions={{
-        headerShown: false, // Esconde o header nas telas da aba
+        headerShown: false, 
       }}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Search" component={ProductSearchScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
 };
@@ -81,8 +88,8 @@ const AppNavigator = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName={ROUTES.HOME}
-        screenOptions={defaultScreenOptions}
+        initialRouteName={ROUTES.LOGIN}
+        screenOptions={{headerShown: false }}
       >
         <Stack.Screen
           name={ROUTES.LOGIN}

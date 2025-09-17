@@ -15,9 +15,15 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useApp } from "../../context/AppContext";
-import { Button, Input } from "../../components/ui";
+import { Button, Input, } from "../../components/ui";
 import { employeeService } from "../../services/api";
 import { EMPLOYEE_ROLES, getRoleLabel } from "../../constants";
+import MessagePopup from "../../components/ui/MessagePopup";
+import {
+  validateEmail as isEmailValid,
+  validatePassword as isPasswordValid
+} from "../../utils";
+import RNPickerSelect from "react-native-picker-select";
 
 // Helper para % baseado na tela (simula responsive)
 const { width: screenWidth } = Dimensions.get('window');
@@ -26,7 +32,7 @@ const scale = (size) => (screenWidth / 375) * size; // 375 como base (iPhone X w
 
 const EditEmployeeScreen = ({ navigation, route }) => {
   const { employee } = route.params || {};
-  
+
   const [name, setName] = useState(employee?.name || "");
   const [email, setEmail] = useState(employee?.email || "");
   const [role, setRole] = useState(employee?.role || "Estoquista");
@@ -40,15 +46,17 @@ const EditEmployeeScreen = ({ navigation, route }) => {
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [messagePopup, setMessagePopup] = useState({ visible: false, message: "" });
 
   const { user } = useApp();
 
-  const validateEmail = (value) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const validateEmailOnForm = (value) => {
     if (!value) {
       setEmailError("Email é obrigatório");
       return false;
-    } else if (!emailRegex.test(value)) {
+    }
+    // função centralizada!
+    if (!isEmailValid(value)) {
       setEmailError("Email inválido");
       return false;
     }
@@ -56,13 +64,16 @@ const EditEmployeeScreen = ({ navigation, route }) => {
     return true;
   };
 
-  const validatePassword = (value) => {
+
+  const validatePasswordOnForm = (value) => {
+
     if (!value) {
       setPasswordError("Senha é obrigatória");
       return false;
     }
-    if (value.length < 6) {
-      setPasswordError("Senha deve ter pelo menos 6 caracteres");
+    if (!isPasswordValid(value)) {
+
+      setPasswordError("A senha deve ter 8+ caracteres, incluindo maiúscula, minúscula, número e símbolo.");
       return false;
     }
     setPasswordError("");
@@ -120,9 +131,9 @@ const EditEmployeeScreen = ({ navigation, route }) => {
 
     // Validar todos os campos
     const isNameValid = validateName(name);
-    const isEmailValid = validateEmail(email);
+    const isEmailValid = validateEmailOnForm(email);
     const isRoleValid = validateRole(role);
-    const isPasswordValid = password ? validatePassword(password) : true; // Senha opcional na edição
+    const isPasswordValid = password ? validatePasswordOnForm(password) : true; // Senha opcional na edição
     const isConfirmPasswordValid = password ? validateConfirmPassword(confirmPassword) : true;
 
     if (!isNameValid || !isEmailValid || !isRoleValid || !isPasswordValid || !isConfirmPasswordValid) {
@@ -141,28 +152,23 @@ const EditEmployeeScreen = ({ navigation, route }) => {
         idMercado: user?.idMercado || 1,
         ...(password && { senha: password }) // Incluir senha apenas se fornecida
       };
-      
+
       console.log('Atualizando funcionário:', { id: employee.id, ...updateData });
-      
+
       const response = await employeeService.update(employee.id, updateData);
-      
+
       if (response.success) {
-        Alert.alert(
-          "Sucesso", 
-          password ? "Funcionário e senha atualizados com sucesso!" : "Funcionário atualizado com sucesso!",
-          [
-            {
-              text: "OK",
-              onPress: () => navigation.navigate('EmployeeList')
-            }
-          ]
-        );
+        setMessagePopup({
+          visible: true,
+          message: password ? "Funcionário e senha atualizados com sucesso!" : "Funcionário atualizado com sucesso!",
+          onClose: () => navigation.navigate('EmployeeList')
+        });
       } else {
-        Alert.alert("Erro", response.error || "Erro ao atualizar funcionário");
+        setMessagePopup({ visible: true, message: response.error || "Erro ao atualizar funcionário" });
       }
     } catch (err) {
       console.error("Erro inesperado em handleUpdate:", err);
-      Alert.alert("Erro", "Erro ao conectar com o servidor. Tente novamente.");
+      setMessagePopup({ visible: true, message: "Erro ao conectar com o servidor. Tente novamente." });
     } finally {
       setIsSubmitting(false);
       setIsLoading(false);
@@ -189,7 +195,7 @@ const EditEmployeeScreen = ({ navigation, route }) => {
         value={email}
         onChangeText={(text) => {
           setEmail(text);
-          validateEmail(text);
+          validateEmailOnForm(text);
         }}
         keyboardType="email-address"
         autoCapitalize="none"
@@ -198,43 +204,46 @@ const EditEmployeeScreen = ({ navigation, route }) => {
         style={styles.input}
       />
       <View style={styles.pickerContainer}>
-        <Text style={styles.pickerLabel}>Cargo</Text>
-        <View style={styles.pickerWrapper}>
-          <Ionicons name="briefcase-outline" size={20} color="#666" style={styles.pickerIcon} />
-          <TouchableOpacity 
-            style={[styles.pickerButton, roleError ? styles.pickerError : null]}
-            onPress={() => {
-              Alert.alert(
-                "Selecionar Cargo",
-                "Escolha o cargo do funcionário:",
-                [
-                  {
-                    text: "Administrador",
-                    onPress: () => {
-                      setRole("Administrador");
-                      validateRole("Administrador");
-                    }
-                  },
-                  {
-                    text: "Estoquista",
-                    onPress: () => {
-                      setRole("Estoquista");
-                      validateRole("Estoquista");
-                    }
-                  },
-                  {
-                    text: "Cancelar",
-                    style: "cancel"
-                  }
-                ]
-              );
+        <View
+          style={[
+            styles.pickerWrapper,
+            roleError ? styles.pickerError : null,
+          ]}
+        >
+          <Ionicons
+            name="briefcase-outline"
+            size={20}
+            color="#666"
+            style={styles.pickerIcon}
+          />
+          <RNPickerSelect
+            onValueChange={(value) => {
+              setRole(value);
+              validateRole(value);
             }}
-          >
-            <Text style={[styles.pickerText, !role && styles.pickerPlaceholder]}>
-              {role || "Selecione um cargo"}
-            </Text>
-            <Ionicons name="chevron-down" size={20} color="#666" />
-          </TouchableOpacity>
+            items={Object.values(EMPLOYEE_ROLES).map((r) => ({
+              label: getRoleLabel(r),
+              value: r,
+            }))}
+            style={{
+              inputIOS: styles.pickerInput,
+              inputAndroid: styles.pickerInput,
+              inputWeb: styles.pickerInput,
+              placeholder: {
+                ...styles.pickerPlaceholder,
+                ...styles.pickerInput,
+              },
+              iconContainer: {
+                position: 'absolute',
+                right: 15,
+                top: 0,
+                bottom: 0,
+                justifyContent: 'center',
+              },
+            }}
+            value={role}
+            placeholder={{ label: "Selecione um cargo", value: "" }}
+          />
         </View>
         {roleError ? <Text style={styles.errorText}>{roleError}</Text> : null}
       </View>
@@ -245,7 +254,7 @@ const EditEmployeeScreen = ({ navigation, route }) => {
         value={password}
         onChangeText={(text) => {
           setPassword(text);
-          if (text) validatePassword(text);
+          if (text) validatePasswordOnForm(text);
         }}
         secureTextEntry
         isInvalid={!!passwordError}
@@ -310,15 +319,15 @@ const EditEmployeeScreen = ({ navigation, route }) => {
               {employee && (
                 <View style={styles.headerInfoContainer}>
                   <Text style={styles.employeeId}>ID: {employee.id}</Text>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.statusIndicator}
                     onPress={() => setIsActive(!isActive)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons 
-                      name={isActive ? "checkmark-circle" : "close-circle"} 
-                      size={16} 
-                      color={isActive ? "#16a34a" : "#dc2626"} 
+                    <Ionicons
+                      name={isActive ? "checkmark-circle" : "close-circle"}
+                      size={16}
+                      color={isActive ? "#16a34a" : "#dc2626"}
                       style={styles.statusIcon}
                     />
                     <Text style={[styles.statusText, isActive ? styles.activeText : styles.inactiveText]}>
@@ -331,6 +340,14 @@ const EditEmployeeScreen = ({ navigation, route }) => {
             </View>
             {renderEditForm()}
           </View>
+            <MessagePopup
+              visible={messagePopup.visible}
+              message={messagePopup.message}
+              onClose={() => {
+                setMessagePopup({ visible: false, message: "" });
+                if (messagePopup.onClose) messagePopup.onClose();
+              }}
+            />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -338,21 +355,21 @@ const EditEmployeeScreen = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
+  container: {
+    flex: 1,
     backgroundColor: "#fff",
     ...Platform.select({
       web: { alignItems: 'center', justifyContent: 'center' },
     }),
   },
-  keyboardAvoidingView: { 
-    flex: 1, 
+  keyboardAvoidingView: {
+    flex: 1,
     width: isWeb ? Math.min(screenWidth * 0.8, 600) : '100%',
   },
-  scrollView: { 
-    flexGrow: 1, 
-    paddingHorizontal: 20, 
-    paddingBottom: 10 
+  scrollView: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingBottom: 10
   },
   logoContainer: { alignItems: "center", marginTop: 10, marginBottom: 5 },
   logo: {
@@ -441,49 +458,66 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   button: { flex: 1, height: 44, borderRadius: 8 },
-  cancelButton: { 
-    backgroundColor: "#dc2626" 
+  cancelButton: {
+    backgroundColor: "#dc2626"
   },
-  updateButton: { 
-    backgroundColor: "#2d5d3d" 
+  updateButton: {
+    backgroundColor: "#2d5d3d"
   },
   pickerContainer: {
-    marginBottom: 8,
+    marginBottom: 16,
   },
   pickerLabel: {
-    fontSize: 14,
-    fontWeight: "500",
+    fontSize: 16,
+    fontWeight: "600",
     color: "#333",
-    marginBottom: 6,
-  },
-  pickerWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f8f9fa",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#e9ecef",
-    paddingHorizontal: 12,
+    marginBottom: 8,
   },
   pickerIcon: {
-    marginRight: 8,
+    position: 'absolute',
+    left: 15,
+    top: '50%',
+    transform: [{ translateY: -10 }],
+    zIndex: 2,
   },
-  pickerButton: {
+  pickerWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    position: 'relative',
+    minHeight: 45,
+  },
+  iconContainer: {
+    position: 'absolute',
+    right: 15,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+  pickerInput: {
     flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 12,
-  },
-  pickerText: {
     fontSize: 16,
-    color: "#333",
+    color: '#333',
+    backgroundColor: "transparent",
+    paddingTop: 10,
+    paddingBottom: 10,
+    paddingLeft: 45,
+    paddingRight: 45,
+    ...Platform.select({
+      web: {
+        borderWidth: 0,
+        outline: 'none',
+      }
+    }),
   },
   pickerPlaceholder: {
     color: "#999",
   },
   pickerError: {
-    borderColor: "#dc2626",
+    borderColor: "#dc3545",
   },
   errorText: {
     fontSize: 12,

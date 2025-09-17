@@ -1,6 +1,6 @@
 // Configurações da API
 export const API_CONFIG = {
-  BASE_URL: process.env.REACT_APP_API_URL || 'https://e-gus-api-1.onrender.com', // mudar isso daqui ipconfi ipv4
+  BASE_URL: process.env.REACT_APP_API_URL || 'https://e-gus--1.onrender.com', // mudar isso daqui ipconfi ipv4
   TIMEOUT: 10000,
 };
 
@@ -171,6 +171,7 @@ export const ROUTES = {
   EDIT_EMPLOYEE: 'EditEmployee',
   PRODUCT_SEARCH: 'Search',
   PRODUCT_COMPARISON: 'ProductComparison',
+  PROFILE: 'Profile',
 };
 
 // Configurações de animação

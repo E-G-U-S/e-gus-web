@@ -27,7 +27,7 @@ const CustomBottomTabBar = ({ state, descriptors, navigation }) => {
             if (route.name === "Search") return isFocused ? "search" : "search-outline";
            // if (route.name === "Map") return isFocused ? "map" : "map-outline";
             //if (route.name === "Notifications") return isFocused ? "notifications" : "notifications-outline";
-           // if (route.name === "Profile") return isFocused ? "person" : "person-outline";
+            if (route.name === "Profile") return isFocused ? "person" : "person-outline";
           })();
 
           return (

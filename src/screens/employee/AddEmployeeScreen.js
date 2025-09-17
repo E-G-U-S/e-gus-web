@@ -18,6 +18,10 @@ import { Button, Input } from "../../components/ui";
 import { employeeService } from "../../services/api";
 import { EMPLOYEE_ROLES, getRoleLabel } from "../../constants";
 import MessagePopup from "../../components/ui/MessagePopup";
+import {
+  validateEmail as isEmailValid,
+  validatePassword as isPasswordValid
+} from "../../utils";
 
 // Helper for responsive scaling
 const { width: screenWidth } = Dimensions.get("window");
@@ -44,12 +48,13 @@ const AddEmployeeScreen = ({ navigation }) => {
 
   const { user } = useApp();
 
-  const validateEmail = (value) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const validateEmailOnForm = (value) => {
     if (!value) {
       setEmailError("Email é obrigatório");
       return false;
-    } else if (!emailRegex.test(value)) {
+    }
+    // função centralizada!
+    if (!isEmailValid(value)) {
       setEmailError("Email inválido");
       return false;
     }
@@ -66,26 +71,20 @@ const AddEmployeeScreen = ({ navigation }) => {
     return true;
   };
 
-  const validatePassword = (value) => {
-    if (!value) {
-      setPasswordError("Senha é obrigatória");
-      return false;
-    }
-    const hasLowerCase = /[a-z]/.test(value);
-    const hasUpperCase = /[A-Z]/.test(value);
-    const hasDigit = /\d/.test(value);
-    const hasSymbol = /[!@#$%^&*(),.?":{}|<>]/.test(value);
-
-    if (value.length < 8) {
-      setPasswordError("A senha deve ter pelo menos 8 caracteres");
-      return false;
-    } else if (!hasLowerCase || !hasUpperCase || !hasDigit || !hasSymbol) {
-      setPasswordError("Inclua minúscula, maiúscula, número e símbolo");
-      return false;
-    }
-    setPasswordError("");
-    return true;
-  };
+    const validatePasswordOnForm = (value) => {
+  
+      if (!value) {
+        setPasswordError("Senha é obrigatória");
+        return false;
+      }
+      if (!isPasswordValid(value)) {
+  
+        setPasswordError("A senha deve ter 8+ caracteres, incluindo maiúscula, minúscula, número e símbolo.");
+        return false;
+      }
+      setPasswordError("");
+      return true;
+    };
 
   const validateName = (value) => {
     if (!value) {
@@ -124,9 +123,9 @@ const AddEmployeeScreen = ({ navigation }) => {
     setConfirmPasswordError("");
 
     const isNameValid = validateName(name);
-    const isEmailValid = validateEmail(email);
+    const isEmailValid = validateEmailOnForm(email);
     const isRoleValid = validateRole(role);
-    const isPasswordValid = validatePassword(password);
+    const isPasswordValid = validatePasswordOnForm(password);
     const isConfirmPasswordValid = validateConfirmPassword(confirmPassword);
 
     if (
@@ -202,7 +201,7 @@ const AddEmployeeScreen = ({ navigation }) => {
         value={email}
         onChangeText={(text) => {
           setEmail(text);
-          validateEmail(text);
+          validateEmailOnForm(text);
         }}
         keyboardType="email-address"
         autoCapitalize="none"
@@ -279,7 +278,7 @@ color="#666"
         value={password}
         onChangeText={(text) => {
           setPassword(text);
-          validatePassword(text);
+          validatePasswordOnForm(text);
         }}
         secureTextEntry={!showPassword}
         isInvalid={!!passwordError}

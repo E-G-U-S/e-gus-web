@@ -1,9 +1,12 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, Dimensions, Platform } from 'react-native';
 
 // Helper para % baseado na tela (simula responsive)
 const { width: screenWidth } = Dimensions.get('window');
-const scale = (size) => (screenWidth / 375) * size; // 375 como base (iPhone X width)
+const isWeb = Platform.OS === 'web';
+const maxScaleWidth = 450; // largura máxima para web
+const effectiveScreenWidth = isWeb ? Math.min(screenWidth, maxScaleWidth) : screenWidth;
+const scale = (size) => (effectiveScreenWidth / 375) * size; // 375 como base (iPhone X width)
 
 const MessagePopup = ({ visible, message, onClose }) => {
   return (
