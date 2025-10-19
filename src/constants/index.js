@@ -1,6 +1,6 @@
 // Configurações da API
 export const API_CONFIG = {
-  BASE_URL: process.env.REACT_APP_API_URL || 'https://e-gus--1.onrender.com', // mudar isso daqui ipconfi ipv4
+  BASE_URL: process.env.REACT_APP_API_URL || 'http://192.168.18.33:8080', // mudar isso daqui ipconfi ipv4
   TIMEOUT: 10000,
 };
 
@@ -20,12 +20,22 @@ export const API_ENDPOINTS = {
     getById: (id) => `/funcionarios/${id}`,
     update: (id) => `/funcionarios/${id}`,
   },
-  
+
   usuarios: {
     list: '/usuarios',
     create: '/usuarios',
     getById: (id) => `/usuarios/${id}`,
     update: (id) => `/usuarios/${id}`,
+  },
+
+  mercados: {
+    produtosPorMercado: (mercadoId) => `/mercados/${mercadoId}/produtos`,
+  },
+
+  produtos: {
+    list: '/produtos',
+    getById: (id) => `/produtos/${id}`,
+    mercadosPorProduto: (id) => `/produtos/${id}/mercados`,
   },
 };
 

@@ -1,13 +1,13 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 
 const ProductCard = ({ item, onPress, horizontal = false }) => {
-  const store = item.stores && item.stores.length > 0 ? item.stores[0] : {};
-  const isPromotion = store.isPromotion || false;
-  const originalPrice = store.price || 0;
-  const promotionPrice = store.promotionPrice || originalPrice;
-  const discountPercentage = isPromotion
+  const isPromotion = item.precoPromocional != null;
+  const originalPrice = Number(item.precoBase ?? 0);
+  const finalPrice = Number(item.precoFinal ?? originalPrice);
+  const promotionPrice = isPromotion ? Number(item.precoPromocional) : finalPrice;
+  const hasPrice = typeof item.precoFinal === 'number' && !isNaN(item.precoFinal);
+  const discountPercentage = isPromotion && originalPrice > 0
     ? Math.round(((originalPrice - promotionPrice) / originalPrice) * 100)
     : 0;
 
@@ -22,32 +22,31 @@ const ProductCard = ({ item, onPress, horizontal = false }) => {
         </View>
       )}
       <Image
-        source={{ uri: item.image_url || 'https://via.placeholder.com/150?text=No+Image' }}
+        source={{ uri: item.imagemUrl || 'https://via.placeholder.com/150?text=No+Image' }}
         style={[styles.productImage, horizontal && styles.horizontalImage]}
         resizeMode="contain"
       />
       <View style={styles.productInfo}>
         <Text style={styles.productName} numberOfLines={horizontal ? 1 : 2}>
-          {item.name || 'Produto sem nome'}
+          {item.nome || 'Produto sem nome'}
         </Text>
         {!horizontal && (
           <Text style={styles.productCategory} numberOfLines={1}>
-            {item.category || 'Sem categoria'}
+            {item.categoria || 'Sem categoria'}
           </Text>
         )}
-        <Text style={styles.productBrand} numberOfLines={1}>
-          {item.brand || 'Sem marca'}
-        </Text>
-        <View style={styles.priceContainer}>
-          <Text style={styles.productPrice}>
-            R$ {promotionPrice.toFixed(2)}
-          </Text>
-          {isPromotion && originalPrice !== promotionPrice && (
-            <Text style={styles.originalPrice}>
-              R$ {originalPrice.toFixed(2)}
+        {hasPrice && (
+          <View style={styles.priceContainer}>
+            <Text style={styles.productPrice}>
+              R$ {finalPrice.toFixed(2)}
             </Text>
-          )}
-        </View>
+            {isPromotion && originalPrice !== promotionPrice && (
+              <Text style={styles.originalPrice}>
+                R$ {originalPrice.toFixed(2)}
+              </Text>
+            )}
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );

@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         borderWidth: 0, // Remove a borda padrão do <select>
-        outline: 'none',  // Remove a linha azul de foco do navegador
+        outlineWidth: 0,  // Remove a linha azul de foco do navegador
       }
     }),
  

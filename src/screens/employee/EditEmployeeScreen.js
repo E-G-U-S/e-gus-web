@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         borderWidth: 0,
-        outline: 'none',
+        outlineWidth: 0,
       }
     }),
   },

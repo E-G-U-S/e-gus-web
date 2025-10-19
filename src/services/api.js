@@ -343,4 +343,62 @@ export const employeeService = {
   },
 };
 
+export const productService = {
+  async listAll() {
+    const response = await apiService.get(API_ENDPOINTS.produtos.list);
+    if (!response.success) {
+      return response;
+    }
+    const data = Array.isArray(response.data) ? response.data : [];
+    const normalized = data.map((p) => ({
+      id: p.id,
+      nome: p.nome,
+      categoria: typeof p.categoria === 'string' ? p.categoria : (p.categoria?.nome ?? null),
+      imagemUrl: p.urlImagem ?? p.imagemUrl ?? null,
+      maiorIdade: Boolean(p.maiorIdade),
+      codigoBarras: p.codigoBarras ?? null,
+    }));
+    return { success: true, data: normalized };
+  },
+
+  async getById(id) {
+    const response = await apiService.get(API_ENDPOINTS.produtos.getById(id));
+    if (!response.success) {
+      return response;
+    }
+    const p = response.data || {};
+    const normalized = {
+      id: p.id,
+      nome: p.nome,
+      categoria: typeof p.categoria === 'string' ? p.categoria : (p.categoria?.nome ?? null),
+      imagemUrl: p.urlImagem ?? p.imagemUrl ?? null,
+      maiorIdade: Boolean(p.maiorIdade),
+      codigoBarras: p.codigoBarras ?? null,
+    };
+    return { success: true, data: normalized };
+  },
+
+  async getPricesByProduct(id) {
+    const response = await apiService.get(API_ENDPOINTS.produtos.mercadosPorProduto(id));
+    if (!response.success) {
+      return response;
+    }
+    const data = Array.isArray(response.data) ? response.data : [];
+    const normalized = data.map((pm) => ({
+      id: pm.id ?? null,
+      nome: pm.nome ?? null,
+      categoria: typeof pm.categoria === 'string' ? pm.categoria : (pm.categoria?.nome ?? null),
+      imagemUrl: pm.urlImagem ?? pm.imagemUrl ?? null,
+      maiorIdade: Boolean(pm.maiorIdade),
+      precoFinal: typeof pm.precoFinal === 'number' ? pm.precoFinal : null,
+      precoBase: typeof pm.precoBase === 'number' ? pm.precoBase : null,
+      precoPromocional: typeof pm.precoPromocional === 'number' ? pm.precoPromocional : null,
+      estoque: typeof pm.estoque === 'number' ? pm.estoque : null,
+      mercadoNome: pm.mercadoNome ?? null,
+      produtoMercadoId: pm.produtoMercadoId ?? null,
+    }));
+    return { success: true, data: normalized };
+  },
+};
+
 export const funcionarioService = employeeService;

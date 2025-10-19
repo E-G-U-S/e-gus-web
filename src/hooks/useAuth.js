@@ -19,11 +19,11 @@ export const useAuth = () => {
   const [loginLoading, setLoginLoading] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
 
-  const login = async (email, password) => {
+  const login = async (loginData) => {
     try {
       setLoginLoading(true);
       setLoading(true);
-      const response = await authService.login(email, password);
+      const response = await authService.login(loginData);
 
       if (response.success) {
         console.log('✅ useAuth: Login bem-sucedido');
@@ -46,7 +46,7 @@ export const useAuth = () => {
       } else {
         console.log('❌ useAuth: Login falhou com erro:', response.error);
 
-        // Usar a mensagem de erro  que já foi tratada pela API
+        // Usar a mensagem de erro que já foi tratada pela API
         addNotification({
           type: 'error',
           title: 'Erro no login',

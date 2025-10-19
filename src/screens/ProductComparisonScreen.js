@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LineChart } from "react-native-chart-kit";
+import { productService } from "../services/api";
 
 
 const { width } = Dimensions.get("window");
@@ -33,138 +34,84 @@ const ProductComparisonScreen = ({ route, navigation }) => {
     try {
       setLoading(true);
 
-      const { coords: userCoords, error: locationError } = await fetchUserCurrentLocation();
-      if (locationError) {
-        console.warn("Não foi possível obter a localização do usuário para calcular distâncias.");
+      const baseRes = await productService.getById(Number(product.id));
+      if (!baseRes?.success || !baseRes.data) {
+        throw new Error(baseRes?.error || "Falha ao buscar produto base");
       }
+      const base = baseRes.data;
 
-      let storesPrices = await databaseService.getProductPrices(Number(product.id));
-
-      if (userCoords) {
-        storesPrices = calculateDistancesForStores(storesPrices, userCoords.latitude, userCoords.longitude);
-      } else {
-        storesPrices = storesPrices.map(store => ({ ...store, distance: "N/A" }));
-      }
-
-      const priceHistory = await databaseService.getPriceHistory(Number(product.id));
-
-      if (!priceHistory.length) {
-        console.warn("Nenhum histórico de preços encontrado.");
-        Alert.alert("Aviso", "Histórico de preços não disponível.");
-      }
-
-      const weekPrices = priceHistory.slice(0, 7).map((p) => p.preco_novo || 0);
-      const monthPrices = priceHistory.filter((_, i) => i % 7 === 0).slice(0, 4).map((p) => p.preco_novo || 0);
-      const yearPrices = priceHistory.filter((_, i) => i % 30 === 0).slice(0, 6).map((p) => p.preco_novo || 0);
-
-      const validPrices = storesPrices
-        .map((s) => s.promotionPrice || s.price)
-        .filter((p) => typeof p === "number" && !isNaN(p));
-      const bestPrice = validPrices.length ? Math.min(...validPrices) : 0;
-      const bestPriceStore =
-        storesPrices.find((s) => (s.promotionPrice || s.price) === bestPrice)?.name || "N/A";
-
-      const initialSortedStores = [...storesPrices].sort((a, b) => {
-        const priceA = a.promotionPrice ?? a.price ?? Infinity;
-        const priceB = b.promotionPrice ?? b.price ?? Infinity;
-        return priceA - priceB;
+      const pricesRes = await productService.getPricesByProduct(Number(product.id));
+      const storesPrices = (pricesRes?.success ? pricesRes.data : []).map((pm) => {
+        const price = typeof pm.precoFinal === 'number' ? pm.precoFinal : (typeof pm.precoBase === 'number' ? pm.precoBase : null);
+        const promo = typeof pm.precoPromocional === 'number' ? pm.precoPromocional : null;
+        const isPromotion = promo != null && price != null && promo < price;
+        return {
+          id: pm.produtoMercadoId ?? `NA-${pm.id ?? Math.random()}`,
+          name: pm.mercadoNome ?? 'Mercado não informado',
+          isOpen: true,
+          address: null,
+          distance: null,
+          updatedAt: "",
+          price: price ?? 0,
+          promotionPrice: promo,
+          isPromotion,
+        };
       });
 
+      const computeBest = () => {
+        if (!storesPrices.length) return { bestPrice: null, bestPriceStore: "N/A" };
+        let best = { price: Infinity, storeName: "N/A" };
+        for (const s of storesPrices) {
+          const p = s.promotionPrice ?? s.price;
+          if (typeof p === 'number' && p < best.price) {
+            best = { price: p, storeName: s.name };
+          }
+        }
+        return { bestPrice: best.price === Infinity ? null : best.price, bestPriceStore: best.storeName };
+      };
+      const { bestPrice, bestPriceStore } = computeBest();
+
       const details = {
-        id: product.id,
-        name: product.name || "Produto Sem Nome",
-        brand: product.brand || "Marca Desconhecida",
-        image: product.image || "https://via.placeholder.com/150",
-        description: product.description || "Sem descrição disponível",
+        id: base.id,
+        name: base.nome || "Produto Sem Nome",
+        brand: base.categoria ? `Categoria: ${base.categoria}` : "Categoria não informada",
+        image: base.imagemUrl || "https://via.placeholder.com/150",
+        description: "Sem descrição disponível",
         bestPrice,
         bestPriceStore,
-        storesPrices: initialSortedStores.map((store) => ({
-          ...store,
-          updatedAt: store.lastUpdated || new Date().toLocaleDateString("pt-BR"),
-        })),
+        storesPrices,
         priceHistory: {
-          week: weekPrices.length ? weekPrices : Array(7).fill(0),
-          month: monthPrices.length ? monthPrices : Array(4).fill(0),
-          year: yearPrices.length ? yearPrices : Array(6).fill(0),
+          week: [],
+          month: [],
+          year: [],
         },
         details: [
-          { label: "Categoria", value: product.category || "N/A" },
-          { label: "Código de Barras", value: product.ean || "N/A" },
-          { label: "Restrição de Idade", value: product.isAdultOnly ? "18+" : "Livre" },
+          { label: "Categoria", value: base.categoria || "N/A" },
+          { label: "Código de Barras", value: base.codigoBarras || "N/A" },
+          { label: "Restrição de Idade", value: base.maiorIdade ? "18+" : "Livre" },
         ],
       };
 
       setProductDetails(details);
+      setSortBy("price");
+      setTimeout(() => sortStores(), 0);
     } catch (error) {
       console.error("Erro ao carregar detalhes do produto:", error);
-      Alert.alert("Erro", "Não foi possível carregar os detalhes do produto. Usando dados mockados.");
+      Alert.alert("Erro", "Não foi possível carregar os detalhes do produto.");
       setProductDetails({
         id: product.id,
-        name: product.name || "Produto Exemplo",
-        brand: "Marca Exemplo",
-        image: "https://via.placeholder.com/150",
-        description: "Descrição mockada do produto.",
-        bestPrice: 19.99,
-        bestPriceStore: "Mercado Exemplo",
-        storesPrices: [
-          {
-            id: "1",
-            name: "Mercado Exemplo A",
-            address: "Rua Exemplo, 123 - São Paulo, SP",
-            price: 19.99,
-            promotionPrice: null,
-            isPromotion: false,
-            distance: 1.2,
-            isOpen: true,
-            rating: 4.5,
-            latitude: -23.5505,
-            longitude: -46.6333,
-            phone: "(11) 99999-9999",
-            hours: "08:00 - 22:00",
-            updatedAt: "16/06/2025",
-          },
-          {
-            id: "2",
-            name: "Mercado Exemplo B",
-            address: "Av. Teste, 456 - São Paulo, SP",
-            price: 22.50,
-            promotionPrice: 20.00,
-            isPromotion: true,
-            distance: 0.5,
-            isOpen: true,
-            rating: 4.0,
-            latitude: -23.5510,
-            longitude: -46.6340,
-            phone: "(11) 88888-7777",
-            hours: "09:00 - 21:00",
-            updatedAt: "15/06/2025",
-          },
-          {
-            id: "3",
-            name: "Mercado Exemplo C",
-            address: "Rua Mock, 789 - São Paulo, SP",
-            price: 18.75,
-            promotionPrice: null,
-            isPromotion: false,
-            distance: 3.0,
-            isOpen: false,
-            rating: 4.8,
-            latitude: -23.5520,
-            longitude: -46.6350,
-            phone: "(11) 77777-6666",
-            hours: "10:00 - 19:00",
-            updatedAt: "17/06/2025",
-          },
-        ].sort((a, b) => (a.promotionPrice ?? a.price ?? Infinity) - (b.promotionPrice ?? b.price ?? Infinity)),
-        priceHistory: {
-          week: [19.99, 20.5, 20.0, 19.8, 19.9, 20.1, 19.99],
-          month: [19.99, 20.5, 20.0, 19.8],
-          year: [19.99, 21.0, 20.5, 20.0, 19.8, 19.9],
-        },
+        name: product.nome || product.name || "Produto Sem Nome",
+        brand: product.categoria ? `Categoria: ${product.categoria}` : "Categoria não informada",
+        image: product.imagemUrl || product.image || "https://via.placeholder.com/150",
+        description: "Sem descrição disponível",
+        bestPrice: null,
+        bestPriceStore: "N/A",
+        storesPrices: [],
+        priceHistory: { week: [], month: [], year: [] },
         details: [
-          { label: "Categoria", value: "Alimentos" },
-          { label: "Código de Barras", value: "123456789" },
-          { label: "Restrição de Idade", value: "Livre" },
+          { label: "Categoria", value: product.categoria || "N/A" },
+          { label: "Código de Barras", value: product.codigoBarras || "N/A" },
+          { label: "Restrição de Idade", value: product.maiorIdade ? "18+" : "Livre" },
         ],
       });
     } finally {

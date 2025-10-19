@@ -13,7 +13,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../components/ui';
 import SearchBar from '../components/ui/SearchBar';
 import ProductCard from '../components/ui/ProductCard';
-import { mockCategories, mockSearchProducts } from '../utils/mockData';
+import { mockCategories } from '../utils/mockData';
+import { productService } from '../services/api';
+import { useApp } from '../context/AppContext';
 
 const ProductSearchScreen = ({ route, navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -24,6 +26,7 @@ const ProductSearchScreen = ({ route, navigation }) => {
   const [sortBy, setSortBy] = useState('relevance');
   const [showFilters, setShowFilters] = useState(false);
   const [categories, setCategories] = useState([]);
+  const { user } = useApp();
 
   useEffect(() => {
     const initializeScreen = async () => {
@@ -67,38 +70,46 @@ const ProductSearchScreen = ({ route, navigation }) => {
     setLoading(true);
 
     try {
-      const trimmedQuery = query.trim().toLowerCase();
+      const trimmedQuery = (query || '').trim().toLowerCase();
       const escapedQuery = escapeLikeQuery(trimmedQuery);
       console.log('Buscando com:', { query: escapedQuery, categoryId: filter });
 
-      // Mock data search
-      let results = mockSearchProducts(escapedQuery, filter);
+      const response = await productService.listAll();
+      let results = [];
 
-      // Uncomment for database use
-      // let categoryIdToSearch = null;
-      // if (filter !== 'all') {
-      //   categoryIdToSearch = Number(filter);
-      // }
-      // let results = await databaseService.searchProducts(escapedQuery, categoryIdToSearch);
-
-      // Validate results
-      if (!Array.isArray(results)) {
-        console.warn('Resultados inválidos, definindo como vazio.');
+      if (response?.success && Array.isArray(response.data)) {
+        results = response.data;
+      } else {
+        console.warn('Falha ao buscar produtos na API:', response?.error || 'Erro desconhecido');
         results = [];
       }
 
-      // Sort results
+      // Filtro por query
+      if (escapedQuery) {
+        results = results.filter((p) => (p.nome || '').toLowerCase().includes(escapedQuery));
+      }
+
+      // Filtro por categoria
+      if (filter && filter !== 'all') {
+        const selectedCat = categories.find((cat) => String(cat.id) === String(filter));
+        const selectedName = selectedCat?.name?.toLowerCase();
+        if (selectedName) {
+          results = results.filter((p) => (p.categoria || '').toLowerCase() === selectedName);
+        }
+      }
+
+      // Ordenação
       let sortedResults = [...results];
       if (sortBy === 'price_asc') {
         sortedResults.sort((a, b) => {
-          const priceA = a.stores?.length > 0 ? (a.stores[0].promotionPrice ?? a.stores[0].price) : Infinity;
-          const priceB = b.stores?.length > 0 ? (b.stores[0].promotionPrice ?? b.stores[0].price) : Infinity;
+          const priceA = a.precoFinal ?? Infinity;
+          const priceB = b.precoFinal ?? Infinity;
           return priceA - priceB;
         });
       } else if (sortBy === 'price_desc') {
         sortedResults.sort((a, b) => {
-          const priceA = a.stores?.length > 0 ? (a.stores[0].promotionPrice ?? a.stores[0].price) : 0;
-          const priceB = b.stores?.length > 0 ? (b.stores[0].promotionPrice ?? b.stores[0].price) : 0;
+          const priceA = a.precoFinal ?? 0;
+          const priceB = b.precoFinal ?? 0;
           return priceB - priceA;
         });
       }
@@ -133,16 +144,20 @@ const ProductSearchScreen = ({ route, navigation }) => {
     let resultsToReorder = [...searchResults];
     if (sort === 'price_asc') {
       resultsToReorder.sort((a, b) => {
-        const priceA = a.stores?.length > 0 ? (a.stores[0].promotionPrice ?? a.stores[0].price) : Infinity;
-        const priceB = b.stores?.length > 0 ? (b.stores[0].promotionPrice ?? b.stores[0].price) : Infinity;
+        const priceA = a.precoFinal ?? Infinity;
+        const priceB = b.precoFinal ?? Infinity;
         return priceA - priceB;
       });
     } else if (sort === 'price_desc') {
       resultsToReorder.sort((a, b) => {
-        const priceA = a.stores?.length > 0 ? (a.stores[0].promotionPrice ?? a.stores[0].price) : 0;
-        const priceB = b.stores?.length > 0 ? (b.stores[0].promotionPrice ?? b.stores[0].price) : 0;
+        const priceA = a.precoFinal ?? 0;
+        const priceB = b.precoFinal ?? 0;
         return priceB - priceA;
       });
+    } else if (sort === 'name_asc') {
+      resultsToReorder.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+    } else if (sort === 'name_desc') {
+      resultsToReorder.sort((a, b) => (b.nome || '').localeCompare(a.nome || ''));
     }
     setSearchResults(resultsToReorder);
   };

@@ -18,7 +18,9 @@ import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import SearchBar from '../components/ui/SearchBar';
 import ProductCard from '../components/ui/ProductCard';
 import Animated, { useSharedValue, useAnimatedStyle, interpolate, Extrapolate, interpolateColor } from 'react-native-reanimated';
-import { mockFeaturedProducts, mockBeverageHighlights, mockNearbyStores, mockCategories, mockLocation } from '../utils/mockData';
+import { mockCategories } from '../utils/mockData';
+import { productService } from '../services/api';
+import { useApp } from '../context/AppContext';
 
 const { width } = Dimensions.get('window');
 const cardWidth = width * 0.4;
@@ -35,6 +37,7 @@ const HomeScreen = () => {
   const [locationError, setLocationError] = useState(null);
   const [userCoords, setUserCoords] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { user } = useApp();
 
   // Obter a altura da barra de abas
   const tabBarHeight = useContext(BottomTabBarHeightContext) || 50;
@@ -67,19 +70,36 @@ const HomeScreen = () => {
     return { transform: [{ translateY }] };
   });
 
-  const loadData = () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      setFeaturedProducts(mockFeaturedProducts || []);
-      setBeverageHighlights(mockBeverageHighlights || []);
-      setNearbyStores(mockNearbyStores || []);
       setCategories(mockCategories || []);
-      setCurrentLocationText(mockLocation?.address || 'Localização não disponível');
-      setUserCoords(mockLocation?.coords || null);
+
+      const response = await productService.listAll();
+
+      let products = [];
+      if (response?.success && Array.isArray(response.data)) {
+        products = response.data;
+      } else {
+        console.warn('Falha ao carregar produtos da API:', response?.error || 'Erro desconhecido');
+        products = [];
+      }
+
+      const featured = [...products].slice(0, 10);
+
+      const beverage = products
+        .filter((p) => (p.categoria || '').toLowerCase().includes('bebidas'))
+        .slice(0, 10);
+
+      setFeaturedProducts(featured);
+      setBeverageHighlights(beverage);
+      setNearbyStores([]);
+      setCurrentLocationText('Localização não disponível');
+      setUserCoords(null);
       setLocationError(null);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
-      setLocationError('Erro ao carregar localização');
+      setLocationError('Erro ao carregar dados');
     } finally {
       setLoading(false);
     }
@@ -89,9 +109,9 @@ const HomeScreen = () => {
     loadData();
   }, []);
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    loadData();
+    await loadData();
     setRefreshing(false);
   };
 
