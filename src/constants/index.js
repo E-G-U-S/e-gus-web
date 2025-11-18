@@ -1,6 +1,6 @@
 // Configurações da API
 export const API_CONFIG = {
-  BASE_URL: process.env.REACT_APP_API_URL || 'http://192.168.18.50:8080', // mudar isso daqui ipconfi ipv4
+  BASE_URL: process.env.REACT_APP_API_URL || 'http://192.168.18.33:8080', // mudar isso daqui ipconfi ipv4
   TIMEOUT: 10000,
 };
 
@@ -9,24 +9,33 @@ export const API_ENDPOINTS = {
   base: API_CONFIG.BASE_URL,
   auth: {
     login: '/login',
-    register: '/funcionarios',
-    logout: '/auth/logout',
+    register: '/usuarios',
+    logout: '/auth/logout', 
     refresh: '/auth/refresh',
   },
+
   funcionarios: {
     list: '/funcionarios',
     create: '/funcionarios',
     getById: (id) => `/funcionarios/${id}`,
     update: (id) => `/funcionarios/${id}`,
-    delete: (id) => `/funcionarios/${id}`,
-    login: '/login',
   },
-  employees: {
-    list: '/funcionarios',
-    create: '/funcionarios',
-    getById: (id) => `/funcionarios/${id}`,
-    update: (id) => `/funcionarios/${id}`,
-    delete: (id) => `/funcionarios/${id}`,
+
+  usuarios: {
+    list: '/usuarios',
+    create: '/usuarios',
+    getById: (id) => `/usuarios/${id}`,
+    update: (id) => `/usuarios/${id}`,
+  },
+
+  mercados: {
+    produtosPorMercado: (mercadoId) => `/mercados/${mercadoId}/produtos`,
+  },
+
+  produtos: {
+    list: '/produtos',
+    getById: (id) => `/produtos/${id}`,
+    mercadosPorProduto: (id) => `/produtos/${id}/mercados`,
   },
 };
 
@@ -165,10 +174,14 @@ export const STORAGE_KEYS = {
 // Rotas da aplicação
 export const ROUTES = {
   LOGIN: 'Login',
+  HOME: 'Home',
   EMPLOYEE_LIST: 'EmployeeList',
   EMPLOYEE_DASHBOARD: 'EmployeeDashboard',
   ADD_EMPLOYEE: 'AddEmployee',
   EDIT_EMPLOYEE: 'EditEmployee',
+  PRODUCT_SEARCH: 'Search',
+  PRODUCT_COMPARISON: 'ProductComparison',
+  PROFILE: 'Profile',
 };
 
 // Configurações de animação

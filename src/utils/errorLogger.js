@@ -25,7 +25,6 @@ class ErrorLogger {
         }
 
         // Em produção, você pode enviar para um serviço de monitoramento
-        // como Sentry, Crashlytics, etc.
         if (!__DEV__) {
             this.sendToMonitoringService({
                 level: LOG_LEVELS.ERROR,

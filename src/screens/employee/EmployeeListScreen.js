@@ -9,7 +9,6 @@ import {
   Dimensions,
   Platform,
   Alert,
-  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
@@ -18,6 +17,7 @@ import { useApp } from "../../context/AppContext";
 import { Button } from "../../components/ui";
 import { employeeService } from "../../services/api";
 import { getRoleLabel } from "../../constants";
+import SearchBar from "../../components/ui/SearchBar"; 
 
 const { width: screenWidth } = Dimensions.get("window");
 const isWeb = Platform.OS === "web";
@@ -47,8 +47,7 @@ const EmployeeListScreen = ({ navigation }) => {
     setIsLoading(true);
     setError(null);
     try {
-      // Usar idMercado do usuário logado ou padrão 1
-      const idMercado = user?.idMercado || 1;
+      const idMercado = user?.idMercado;
       const response = await employeeService.getAll(idMercado);
       
       if (response.success) {
@@ -157,21 +156,15 @@ const EmployeeListScreen = ({ navigation }) => {
           </Button>
         </View>
 
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Pesquisar por nome ou cargo"
-            value={searchQuery}
-            onChangeText={handleSearch}
-            placeholderTextColor="#999"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
-              <Ionicons name="close-circle" size={20} color="#666" />
-            </TouchableOpacity>
-          )}
-        </View>
+        {/* Integração do SearchBar customizado */}
+        <SearchBar
+          searchQuery={searchQuery}
+          setSearchQuery={(query) => handleSearch(query)} // Chama handleSearch diretamente no onChangeText
+          placeholder="Pesquisar por nome ou cargo"
+          autoFocus={false}
+          onSearch={null} // Não usado, pois busca é em tempo real
+          style={styles.searchContainerOverride} // Opcional: estilo extra se precisar
+        />
 
         {isLoading ? (
           <Text style={styles.loadingText}>Carregando...</Text>
@@ -255,27 +248,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 10,
   },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f5f5f5",
-    borderRadius: 8,
-    paddingHorizontal: 10,
+  // Estilo opcional para override no SearchBar (ex: marginBottom)
+  searchContainerOverride: {
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#e5e5e5",
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    height: 40,
-    fontSize: 14,
-    color: "#333",
-  },
-  clearButton: {
-    padding: 4,
   },
   list: {
     paddingBottom: 16,

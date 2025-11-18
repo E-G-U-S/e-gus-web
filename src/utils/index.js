@@ -2,13 +2,47 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Utilitários de validação
 export const validateEmail = (email) => {
+  
+  if (!email || email.trim().length === 0) {
+    return false;
+  }
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 };
 
+
+//Senha
 export const validatePassword = (password) => {
-  return password && password.length >= 6;
+  if (!password) {
+    return false;
+  }
+  const minLength = 8;
+  const hasLowerCase = /[a-z]/.test(password);
+  const hasUpperCase = /[A-Z]/.test(password);
+  const hasDigit = /\d/.test(password);
+  const hasSymbol = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  if (
+    password.length >= minLength &&
+    hasLowerCase &&
+    hasUpperCase &&
+    hasDigit &&
+    hasSymbol
+  ) {
+    return true;
+  }
+  return false;
 };
+
+export const isCpfValid = (cpf) => {
+  if (!cpf) return false;
+  const onlyNumbers = cpf.replace(/\D/g, '');
+  if (onlyNumbers.length !== 11 || /^(\d)\1{10}$/.test(onlyNumbers)) {
+    return false;
+  }
+ 
+  return true;
+};
+
 
 export const validateRequired = (value) => {
   return value && value.trim().length > 0;
@@ -32,14 +66,7 @@ export const formatDate = (date, options = {}) => {
   return new Intl.DateTimeFormat('pt-BR', defaultOptions).format(new Date(date));
 };
 
-export const formatPhone = (phone) => {
-  const cleaned = phone.replace(/\D/g, '');
-  const match = cleaned.match(/^(\d{2})(\d{4,5})(\d{4})$/);
-  if (match) {
-    return `(${match[1]}) ${match[2]}-${match[3]}`;
-  }
-  return phone;
-};
+
 
 // Utilitários de string
 export const capitalize = (str) => {

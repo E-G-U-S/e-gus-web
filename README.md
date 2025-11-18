@@ -47,6 +47,9 @@ Antes de começar, certifique-se de ter instalado:
 4. **Execute o projeto localmente**:
    ```bash
    npm start
+    ou 
+    npx expo start --tunnel
+
    ```
    - Pressione **W** → abre no navegador
    - Pressione **A** → abre no Android (emulador)
