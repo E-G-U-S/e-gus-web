@@ -92,35 +92,59 @@ const CartScreen = () => {
             setCheckingOut(true);
 
             try {
-              const subtotal = items.reduce((s,i) => s + (Number(i.price||0) * (i.quantity||0)), 0);
-              // Build payload according to backend DTO
-              const orderPayload = {
-                idUsuario: user?.id ?? null,
-                idCupom: null,
-                // Use first item's storeId as mercado if no explicit mercado id available
-                idMercado: items[0]?.storeId ?? null,
-                itens: items.map(i => ({
-                  produtoId: i.productId,
-                  quantidade: i.quantity,
-                  precoUnitario: Number(i.price || 0),
-                })),
-              };
+              const groups = items.reduce((acc, it) => {
+                const key = it.storeId ?? null;
+                if (!acc[key]) acc[key] = [];
+                acc[key].push(it);
+                return acc;
+              }, {});
 
-              const res = await pedidoService.create(orderPayload);
+              const successes = [];
+              const failures = [];
 
-              if (res.success) {
-                const created = res.data || {};
-                await storage.set('cart', []);
-                setItems([]);
-                setPopupMessage(created.id ? `Pedido criado com sucesso (ID: ${created.id})` : 'Pedido criado com sucesso');
-                setPopupVisible(true);
-              } else {
-                setPopupMessage(res.error || 'Erro ao criar pedido');
-                setPopupVisible(true);
+              for (const [marketIdStr, groupItems] of Object.entries(groups)) {
+                const marketId = marketIdStr === 'null' ? null : Number(marketIdStr);
+                const payload = {
+                  idUsuario: user?.id ?? null,
+                  idCupom: null,
+                  idMercado: marketId,
+                  itens: groupItems.map(i => ({
+                    produtoId: i.productId,
+                    quantidade: i.quantity,
+                    precoUnitario: Number(i.price || 0),
+                  })),
+                };
+
+                const res = await pedidoService.create(payload);
+                if (res.success) {
+                  const created = res.data || {};
+                  successes.push({ marketId, orderId: created.id || null });
+                } else {
+                  failures.push({ marketId, error: res.error || 'Falha ao criar pedido' });
+                }
               }
+
+              const successMarketIds = new Set(successes.map(s => (s.marketId == null ? null : Number(s.marketId))));
+              const remaining = items.filter(it => {
+                const id = it.storeId ?? null;
+                return !successMarketIds.has(id == null ? null : Number(id));
+              });
+
+              await storage.set('cart', remaining);
+              setItems(remaining);
+
+              const createdIds = successes.map(s => s.orderId).filter(Boolean);
+              if (failures.length === 0 && createdIds.length > 0) {
+                setPopupMessage(createdIds.length === 1 ? `Pedido criado com sucesso (ID: ${createdIds[0]})` : `Pedidos criados com sucesso (IDs: ${createdIds.join(', ')})`);
+              } else if (createdIds.length > 0 && failures.length > 0) {
+                setPopupMessage(`Pedidos criados (IDs: ${createdIds.join(', ')}). Falhas em ${failures.length} mercado(s).`);
+              } else {
+                setPopupMessage(failures[0]?.error || 'Erro ao criar pedidos');
+              }
+              setPopupVisible(true);
             } catch (err) {
-              console.error('Erro ao criar pedido:', err);
-              setPopupMessage('Erro ao criar pedido. Tente novamente.');
+              console.error('Erro ao criar pedidos:', err);
+              setPopupMessage('Erro ao criar pedidos. Tente novamente.');
               setPopupVisible(true);
             } finally {
               setCheckingOut(false);
