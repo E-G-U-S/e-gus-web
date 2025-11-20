@@ -37,6 +37,10 @@ export const API_ENDPOINTS = {
     getById: (id) => `/produtos/${id}`,
     mercadosPorProduto: (id) => `/produtos/${id}/mercados`,
   },
+  pedidos: {
+    create: '/pedidos',
+    getById: (id) => `/pedidos/${id}`,
+  },
 };
 
 // Cores do tema

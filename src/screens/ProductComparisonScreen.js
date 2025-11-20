@@ -14,6 +14,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LineChart } from "react-native-chart-kit";
 import { productService } from "../services/api";
+import { storage } from "../utils";
+import { Modal } from 'react-native';
 
 
 const { width } = Dimensions.get("window");
@@ -224,6 +226,73 @@ const ProductComparisonScreen = ({ route, navigation }) => {
     );
   };
 
+  const addToCart = async (store) => {
+    try {
+      const cartKey = 'cart';
+      const existing = (await storage.get(cartKey)) || [];
+      const item = {
+        productId: productDetails.id,
+        name: productDetails.name,
+        storeId: store.id,
+        storeName: store.name,
+        price: (store.promotionPrice ?? store.price) || 0,
+        quantity: 1,
+        image: productDetails.image,
+      };
+      existing.push(item);
+      await storage.set(cartKey, existing);
+      Alert.alert('Sucesso', 'Produto adicionado ao carrinho.');
+    } catch (error) {
+      console.error('Erro ao adicionar ao carrinho:', error);
+      Alert.alert('Erro', 'Não foi possível adicionar ao carrinho.');
+    }
+  };
+
+  // Open quantity modal
+  const [qtyModalVisible, setQtyModalVisible] = useState(false);
+  const [selectedStore, setSelectedStore] = useState(null);
+  const [selectedQty, setSelectedQty] = useState(1);
+
+  const openQtyModal = (store) => {
+    setSelectedStore(store);
+    setSelectedQty(1);
+    setQtyModalVisible(true);
+  };
+
+  const saveToCart = async (store, quantity) => {
+    try {
+      const cartKey = 'cart';
+      const existing = (await storage.get(cartKey)) || [];
+
+      // Try to find existing item by productId + storeId
+      const idx = existing.findIndex(it => it.productId === productDetails.id && it.storeId === store.id);
+      if (idx >= 0) {
+        existing[idx].quantity = (existing[idx].quantity || 0) + quantity;
+      } else {
+        const item = {
+          productId: productDetails.id,
+          name: productDetails.name,
+          storeId: store.id,
+          storeName: store.name,
+          price: (store.promotionPrice ?? store.price) || 0,
+          quantity: quantity,
+          image: productDetails.image,
+        };
+        existing.push(item);
+      }
+
+      await storage.set(cartKey, existing);
+      Alert.alert('Sucesso', 'Produto adicionado ao carrinho.');
+    } catch (error) {
+      console.error('Erro ao adicionar ao carrinho:', error);
+      Alert.alert('Erro', 'Não foi possível adicionar ao carrinho.');
+    } finally {
+      setQtyModalVisible(false);
+      setSelectedStore(null);
+      setSelectedQty(1);
+    }
+  };
+
   if (loading || !productDetails) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
@@ -339,10 +408,10 @@ const ProductComparisonScreen = ({ route, navigation }) => {
                     )}
                     <TouchableOpacity
                       style={styles.routeButton}
-                      onPress={() => openMapsApp(store)}
+                      onPress={() => openQtyModal(store)}
                     >
-                      <Ionicons name="navigate-outline" size={18} color="#fff" />
-                      <Text style={styles.routeButtonText}>Rota</Text>
+                      <Ionicons name="cart-outline" size={18} color="#fff" />
+                      <Text style={styles.routeButtonText}>Adicionar</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -350,6 +419,45 @@ const ProductComparisonScreen = ({ route, navigation }) => {
             )}
           </View>
         )}
+
+        {/* Quantity modal */}
+        <Modal
+          visible={qtyModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setQtyModalVisible(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Quantidade</Text>
+              <Text style={styles.modalSubtitle}>{productDetails?.name}</Text>
+              <Text style={styles.modalStore}>{selectedStore?.name}</Text>
+              <View style={styles.qtyControls}>
+                <TouchableOpacity
+                  style={styles.qtyButton}
+                  onPress={() => setSelectedQty(q => Math.max(1, q - 1))}
+                >
+                  <Text style={styles.qtyButtonText}>-</Text>
+                </TouchableOpacity>
+                <Text style={styles.qtyNumber}>{selectedQty}</Text>
+                <TouchableOpacity
+                  style={styles.qtyButton}
+                  onPress={() => setSelectedQty(q => q + 1)}
+                >
+                  <Text style={styles.qtyButtonText}>+</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={[styles.modalActionBtn, { backgroundColor: '#ccc' }]} onPress={() => setQtyModalVisible(false)}>
+                  <Text>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalActionBtn, { backgroundColor: '#2d5d3d' }]} onPress={() => saveToCart(selectedStore, selectedQty)}>
+                  <Text style={{ color: '#fff' }}>Confirmar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         {activeTab === "history" && (
           <View style={styles.pricesContainer}>
@@ -753,6 +861,67 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#333",
     lineHeight: 20,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '85%',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
+  modalStore: {
+    fontSize: 13,
+    color: '#333',
+    marginBottom: 12,
+  },
+  qtyControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  qtyButton: {
+    backgroundColor: '#e6e6e6',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  qtyButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  qtyNumber: {
+    marginHorizontal: 16,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    marginTop: 8,
+    width: '100%',
+    justifyContent: 'space-between',
+  },
+  modalActionBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    marginHorizontal: 6,
+    borderRadius: 8,
+    alignItems: 'center',
   },
 });
 

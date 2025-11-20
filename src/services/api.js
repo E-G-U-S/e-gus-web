@@ -402,3 +402,13 @@ export const productService = {
 };
 
 export const funcionarioService = employeeService;
+
+export const pedidoService = {
+  async create(orderPayload) {
+    return apiService.post(API_ENDPOINTS.pedidos.create, orderPayload);
+  },
+
+  async getById(id) {
+    return apiService.get(API_ENDPOINTS.pedidos.getById(id));
+  }
+};
