@@ -1,6 +1,6 @@
 // Configurações da API
 export const API_CONFIG = {
-  BASE_URL: process.env.REACT_APP_API_URL || 'http://192.168.18.33:8080', // mudar isso daqui ipconfi ipv4
+  BASE_URL: process.env.REACT_APP_API_URL || 'http://192.168.0.51:8080', // mudar isso daqui ipconfi ipv4
   TIMEOUT: 10000,
 };
 
@@ -36,6 +36,10 @@ export const API_ENDPOINTS = {
     list: '/produtos',
     getById: (id) => `/produtos/${id}`,
     mercadosPorProduto: (id) => `/produtos/${id}/mercados`,
+  },
+  pedidos: {
+    create: '/pedidos',
+    getById: (id) => `/pedidos/${id}`,
   },
 };
 
